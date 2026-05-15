@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { DashboardOverview } from "./components/dashboard/dashboard-overview";
+import { ForecastScenarioPlanner } from "./components/forecast/forecast-scenario-planner";
 import { FlowcastShell, type AppPage } from "./components/shell/flowcast-shell";
 import {
   fetchAccounts,
@@ -168,11 +169,20 @@ export default function App() {
       selectedFile={selectedFile}
       snapshot={data}
     >
-      {activePage === "overview" ? (
-        <DashboardOverview data={data} isLoading={loading} />
-      ) : (
-        <PlaceholderPage activePage={activePage} />
-      )}
+      {activePage === "overview" ? <DashboardOverview data={data} isLoading={loading} /> : null}
+      {activePage === "forecast" ? (
+        <ForecastScenarioPlanner
+          accounts={data.accounts}
+          forecast={data.forecast}
+          goals={data.goals}
+          isLoading={loading}
+          plannedPayments={data.plannedPayments}
+          savingsBuckets={data.savingsBuckets}
+          savingsSummary={data.savingsSummary}
+          spendingAssumptions={data.spendingAssumptions}
+        />
+      ) : null}
+      {activePage !== "overview" && activePage !== "forecast" ? <PlaceholderPage activePage={activePage} /> : null}
     </FlowcastShell>
   );
 }

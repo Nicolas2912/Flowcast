@@ -107,19 +107,6 @@ export function FlowcastShell({
   return (
     <main className="fc-app-shell">
       <section className="fc-browser-frame">
-        <div className="fc-browser-topbar">
-          <div className="fc-browser-dots">
-            <span className="fc-dot fc-dot--red" />
-            <span className="fc-dot fc-dot--yellow" />
-            <span className="fc-dot fc-dot--green" />
-          </div>
-          <div className="fc-browser-address">localhost:5173</div>
-          <div className="fc-browser-actions">
-            <span className="fc-browser-star">☆</span>
-            <span className="fc-browser-avatar">A</span>
-          </div>
-        </div>
-
         <div className="fc-product-header">
           <div className="fc-brand-block">
             <LogoIcon />
