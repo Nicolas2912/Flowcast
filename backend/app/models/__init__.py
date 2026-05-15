@@ -3,6 +3,7 @@ from app.models.category import Category
 from app.models.goal import Goal
 from app.models.import_batch import ImportBatch
 from app.models.import_failure import ImportFailure
+from app.models.merchant_rule import MerchantRule
 from app.models.planned_payment import PlannedPayment
 from app.models.savings_bucket import SavingsBucket
 from app.models.setting import AppSetting
@@ -16,6 +17,7 @@ __all__ = [
     "Goal",
     "ImportBatch",
     "ImportFailure",
+    "MerchantRule",
     "PlannedPayment",
     "SavingsBucket",
     "SpendingAssumption",

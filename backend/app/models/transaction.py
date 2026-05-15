@@ -26,6 +26,7 @@ class Transaction(Base):
     raw_row_json: Mapped[str | None] = mapped_column(Text)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     source_import_id: Mapped[int | None] = mapped_column(ForeignKey("import_batches.id"))
+    category_assignment_method: Mapped[str | None] = mapped_column(String(30))
     is_internal_transfer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_excluded_from_forecast: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -38,3 +39,5 @@ class Transaction(Base):
     )
 
     account = relationship("Account", back_populates="transactions")
+    category = relationship("Category")
+    source_import = relationship("ImportBatch", back_populates="transactions")

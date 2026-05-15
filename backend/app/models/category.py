@@ -17,6 +17,8 @@ class Category(Base):
     is_variable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_income: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_saving: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
     parent = relationship("Category", remote_side=[id], backref="children")
+    merchant_rules = relationship("MerchantRule", back_populates="category")
