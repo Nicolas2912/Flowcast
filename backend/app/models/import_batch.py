@@ -29,3 +29,4 @@ class ImportBatch(Base):
     error_summary: Mapped[str | None] = mapped_column(Text)
 
     failures = relationship("ImportFailure", back_populates="import_batch", cascade="all, delete-orphan")
+    transactions = relationship("Transaction", back_populates="source_import")

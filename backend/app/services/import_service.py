@@ -14,6 +14,7 @@ from app.models.account import Account
 from app.models.import_batch import ImportBatch
 from app.models.import_failure import ImportFailure
 from app.models.transaction import Transaction
+from app.services.text_normalization import normalize_text
 
 
 @dataclass
@@ -95,8 +96,11 @@ def import_c24_csv(
             duplicate_count += 1
             continue
 
-        normalized_text = " | ".join(
-            part for part in [parsed_row.transaction_type, parsed_row.description or "", parsed_row.purpose or ""] if part
+        normalized_text = normalize_text(
+            parsed_row.payee,
+            parsed_row.purpose,
+            parsed_row.description,
+            parsed_row.transaction_type,
         )
 
         session.add(

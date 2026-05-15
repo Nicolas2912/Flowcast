@@ -93,6 +93,27 @@ The importer currently:
 - skips duplicate transactions across repeated or overlapping uploads,
 - shows inserted, duplicate, skipped, and failed row counts.
 
+## Reviewing and categorizing transactions
+
+After importing a CSV, the frontend transaction workspace lets you:
+
+- search by payee, purpose, or normalized text,
+- filter by account, category, date range, or uncategorized-only,
+- page through larger transaction sets without loading everything at once,
+- assign a category to a single transaction,
+- assign one category to multiple selected rows in bulk,
+- create and edit category defaults,
+- create deterministic merchant rules with exact, contains, and regex matching,
+- run merchant rules without overwriting manual choices.
+
+Deterministic categorization behavior:
+
+- manual assignments are stored separately and win over automated rules,
+- manual clearing of a category is also preserved,
+- active rules run by priority from lowest number to highest,
+- regex rules are validated before they can be saved,
+- rule matching uses normalized transaction text built from payee, purpose, and raw import text.
+
 ## Common commands
 
 ### Backend
@@ -115,10 +136,14 @@ pnpm build
 
 - `GET /api/v1/health` provides backend and database health.
 - `POST /api/v1/imports/c24` imports a C24 CSV and returns a full import summary.
+- `GET /api/v1/categories` plus `POST/PATCH /api/v1/categories` manage the seeded category model.
+- `GET /api/v1/transactions` provides filtered, paginated transaction review data.
+- `PATCH /api/v1/transactions/{id}/category` and `POST /api/v1/transactions/bulk-category` support manual categorization.
+- `GET/POST/PATCH/DELETE /api/v1/merchant-rules` and `POST /api/v1/merchant-rules/apply` support deterministic categorization.
 - API errors use one response shape for validation, not-found, and database failures.
 - SQLite schema covers accounts, categories, imports, transactions, planned payments, savings buckets, goals, assumptions, and app settings.
-- Default seed data creates one C24 account and starter categories without duplicates.
-- Frontend has a typed API client, a live backend health card, and a CSV import workflow.
+- Default seed data creates one C24 account and a parent-child category hierarchy without duplicates.
+- Frontend now includes a typed transaction workspace with filtering, manual fixes, bulk edits, and merchant-rule management.
 
 ## Notes
 

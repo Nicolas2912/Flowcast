@@ -26,6 +26,32 @@ export type AccountResponse = {
   is_active: boolean;
 };
 
+export type CategoryResponse = {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  parent_name: string | null;
+  behavior_type: string;
+  is_essential: boolean;
+  is_variable: boolean;
+  is_income: boolean;
+  is_saving: boolean;
+  is_excluded: boolean;
+  sort_order: number;
+};
+
+export type CategoryPayload = {
+  name: string;
+  parent_id: number | null;
+  behavior_type: string;
+  is_essential?: boolean;
+  is_variable?: boolean;
+  is_income?: boolean;
+  is_saving?: boolean;
+  is_excluded?: boolean;
+  sort_order?: number;
+};
+
 export type ImportFailureResponse = {
   row_number: number;
   error_message: string;
@@ -59,6 +85,72 @@ export type ImportBatchResponse = {
   skipped_count: number;
   failed_count: number;
   imported_at: string;
+};
+
+export type TransactionResponse = {
+  id: string;
+  booking_date: string;
+  value_date: string | null;
+  amount: number;
+  currency: string;
+  payee: string | null;
+  purpose: string | null;
+  account_id: number;
+  account_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  category_assignment_method: string | null;
+  source_import_id: number | null;
+  source_import_filename: string | null;
+  is_pending: boolean;
+};
+
+export type TransactionListResponse = {
+  items: TransactionResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export type TransactionFilters = {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  account_id?: number | null;
+  category_id?: number | null;
+  uncategorized_only?: boolean;
+  date_from?: string;
+  date_to?: string;
+};
+
+export type MerchantRuleResponse = {
+  id: number;
+  name: string;
+  pattern_type: "exact" | "contains" | "regex";
+  pattern: string;
+  category_id: number;
+  category_name: string;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MerchantRulePayload = {
+  name: string;
+  pattern_type: "exact" | "contains" | "regex";
+  pattern: string;
+  category_id: number;
+  priority?: number;
+  is_active?: boolean;
+};
+
+export type CategorizationRunResponse = {
+  processed_count: number;
+  matched_count: number;
+  updated_count: number;
+  cleared_count: number;
 };
 
 export class HttpError extends Error {
@@ -96,6 +188,24 @@ export function fetchAccounts(): Promise<AccountResponse[]> {
   return request<AccountResponse[]>("/api/v1/accounts");
 }
 
+export function fetchCategories(): Promise<CategoryResponse[]> {
+  return request<CategoryResponse[]>("/api/v1/categories");
+}
+
+export function createCategory(payload: CategoryPayload): Promise<CategoryResponse> {
+  return request<CategoryResponse>("/api/v1/categories", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateCategory(id: number, payload: Partial<CategoryPayload>): Promise<CategoryResponse> {
+  return request<CategoryResponse>(`/api/v1/categories/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function fetchImports(): Promise<ImportBatchResponse[]> {
   return request<ImportBatchResponse[]>("/api/v1/imports");
 }
@@ -108,5 +218,86 @@ export function uploadC24Csv(file: File, accountId: number): Promise<ImportSumma
   return request<ImportSummaryResponse>("/api/v1/imports/c24", {
     method: "POST",
     body,
+  });
+}
+
+export function fetchTransactions(filters: TransactionFilters): Promise<TransactionListResponse> {
+  const params = new URLSearchParams();
+  if (filters.page) {
+    params.set("page", String(filters.page));
+  }
+  if (filters.page_size) {
+    params.set("page_size", String(filters.page_size));
+  }
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.account_id) {
+    params.set("account_id", String(filters.account_id));
+  }
+  if (filters.category_id) {
+    params.set("category_id", String(filters.category_id));
+  }
+  if (filters.uncategorized_only) {
+    params.set("uncategorized_only", "true");
+  }
+  if (filters.date_from) {
+    params.set("date_from", filters.date_from);
+  }
+  if (filters.date_to) {
+    params.set("date_to", filters.date_to);
+  }
+  const query = params.toString();
+  return request<TransactionListResponse>(`/api/v1/transactions${query ? `?${query}` : ""}`);
+}
+
+export function updateTransactionCategory(transactionId: string, categoryId: number | null): Promise<TransactionResponse> {
+  return request<TransactionResponse>(`/api/v1/transactions/${transactionId}/category`, {
+    method: "PATCH",
+    body: JSON.stringify({ category_id: categoryId }),
+  });
+}
+
+export function bulkUpdateTransactionCategory(
+  transactionIds: string[],
+  categoryId: number | null,
+): Promise<{ updated_count: number }> {
+  return request<{ updated_count: number }>("/api/v1/transactions/bulk-category", {
+    method: "POST",
+    body: JSON.stringify({ transaction_ids: transactionIds, category_id: categoryId }),
+  });
+}
+
+export function fetchMerchantRules(): Promise<MerchantRuleResponse[]> {
+  return request<MerchantRuleResponse[]>("/api/v1/merchant-rules");
+}
+
+export function createMerchantRule(payload: MerchantRulePayload): Promise<MerchantRuleResponse> {
+  return request<MerchantRuleResponse>("/api/v1/merchant-rules", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateMerchantRule(
+  id: number,
+  payload: Partial<MerchantRulePayload> & { is_active?: boolean },
+): Promise<MerchantRuleResponse> {
+  return request<MerchantRuleResponse>(`/api/v1/merchant-rules/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteMerchantRule(id: number): Promise<void> {
+  const response = await fetch(`/api/v1/merchant-rules/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new HttpError((await response.json()) as ApiError);
+  }
+}
+
+export function runMerchantRules(): Promise<CategorizationRunResponse> {
+  return request<CategorizationRunResponse>("/api/v1/merchant-rules/apply", {
+    method: "POST",
   });
 }

@@ -22,4 +22,4 @@ def test_seed_is_idempotent():
         categories = session.execute(text("SELECT COUNT(*) FROM categories")).scalar_one()
 
     assert accounts == 1
-    assert categories == 8
+    assert categories == 25
