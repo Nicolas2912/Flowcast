@@ -1,0 +1,3 @@
+Transaktionstyp;Buchungsdatum;Karteneinsatz;Betrag;Zahlungsempfänger;IBAN;BIC;Verwendungszweck;Beschreibung;Kontonummer;Kontoname;Kategorie;Unterkategorie;Bargeldabhebung
+SEPA-Lastschrift;15.05.2026;;"-70,00 €";Mainova;DE71500500000014846026;HELADEFFXXX;KNR 1;Mainova AG;1669113201;C24 Smartkonto;Energie;Strom;
+Kartenzahlung;14.05.2026;not-a-date;"abc";Bäckerei Küßner;;;;1669113201;C24 Smartkonto;Lebensmittel;Bäckerei;

@@ -5,6 +5,7 @@ from datetime import datetime, date
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.time import utc_now_naive
 from app.db.base import Base
 
 
@@ -21,17 +22,19 @@ class Transaction(Base):
     purpose: Mapped[str | None] = mapped_column(Text)
     original_text: Mapped[str | None] = mapped_column(Text)
     normalized_text: Mapped[str | None] = mapped_column(Text)
+    source_row_number: Mapped[int | None] = mapped_column()
+    raw_row_json: Mapped[str | None] = mapped_column(Text)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     source_import_id: Mapped[int | None] = mapped_column(ForeignKey("import_batches.id"))
     is_internal_transfer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_excluded_from_forecast: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now_naive)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now_naive,
+        onupdate=utc_now_naive,
     )
 
     account = relationship("Account", back_populates="transactions")

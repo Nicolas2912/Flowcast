@@ -17,6 +17,8 @@ from alembic.config import Config
 
 from app.main import create_app
 from app.db.session import reset_engine
+from app.db.session import SessionLocal
+from app.seed import seed_defaults
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +30,8 @@ def reset_database():
     alembic_cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", os.environ["FLOWCAST_DATABASE_URL"])
     command.upgrade(alembic_cfg, "head")
+    with SessionLocal() as session:
+        seed_defaults(session)
     yield
 
     reset_engine()

@@ -1,0 +1,3 @@
+Transaktionstyp,Buchungsdatum,Karteneinsatz,Betrag,Zahlungsempfänger,IBAN,BIC,Verwendungszweck,Beschreibung,Kontonummer,Kontoname,Kategorie,Unterkategorie,Bargeldabhebung
+Kartenzahlung,14.05.2026,13.05.2026 11:34,"-47,12 €",Bäckerei Küßner,,,,Einkauf Frühstück,1669113201,C24 Smartkonto,Lebensmittel,Bäckerei,
+SEPA-Lastschrift,11.05.2026,,"-19,99 €",Spotify,DE89370400440532013000,COBADEFFXXX,Spotify Family,Spotify AB,1669113201,C24 Smartkonto,Abos,Musik,

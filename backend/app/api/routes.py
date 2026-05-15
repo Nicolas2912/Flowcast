@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import NotFoundError
 from app.models.account import Account
 from app.models.category import Category
+from app.schemas.imports import ImportBatchResponse, ImportFailureResponse, ImportSummaryResponse
 from app.schemas.account import AccountResponse
 from app.schemas.category import CategoryResponse
 from app.schemas.health import HealthResponse
@@ -16,6 +17,7 @@ from app.schemas.planned_payment import (
     PlannedPaymentValidationRequest,
     PlannedPaymentValidationResponse,
 )
+from app.services.import_service import import_c24_csv, list_import_batches
 
 
 router = APIRouter()
@@ -56,3 +58,60 @@ def validate_planned_payment(
         normalized_frequency=payload.frequency.lower(),
         normalized_payment_type=payload.payment_type.lower(),
     )
+
+
+@router.post("/imports/c24", response_model=ImportSummaryResponse)
+async def upload_c24_csv(
+    account_id: int = Form(...),
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+) -> ImportSummaryResponse:
+    file_bytes = await file.read()
+    summary = import_c24_csv(
+        session=session,
+        filename=file.filename or "upload.csv",
+        file_bytes=file_bytes,
+        account_id=account_id,
+    )
+    return ImportSummaryResponse(
+        import_batch_id=summary.import_batch.id,
+        source_filename=summary.import_batch.source_filename,
+        provider=summary.import_batch.provider,
+        status=summary.import_batch.status,
+        delimiter=summary.import_batch.delimiter,
+        transaction_count=summary.import_batch.transaction_count,
+        inserted_count=summary.inserted_count,
+        duplicate_count=summary.duplicate_count,
+        skipped_count=summary.skipped_count,
+        failed_count=summary.failed_count,
+        imported_at=summary.import_batch.imported_at,
+        failures=[
+            ImportFailureResponse(
+                row_number=failure.row_number,
+                error_message=failure.error_message,
+                raw_row_json=failure.raw_row_json,
+            )
+            for failure in summary.failures
+        ],
+    )
+
+
+@router.get("/imports", response_model=list[ImportBatchResponse])
+def get_import_batches(session: Session = Depends(get_session)) -> list[ImportBatchResponse]:
+    batches = list_import_batches(session=session)
+    return [
+        ImportBatchResponse(
+            id=batch.id,
+            source_filename=batch.source_filename,
+            provider=batch.provider,
+            status=batch.status,
+            delimiter=batch.delimiter,
+            transaction_count=batch.transaction_count,
+            inserted_count=batch.inserted_count,
+            duplicate_count=batch.duplicate_count,
+            skipped_count=batch.skipped_count,
+            failed_count=batch.failed_count,
+            imported_at=batch.imported_at,
+        )
+        for batch in batches
+    ]
