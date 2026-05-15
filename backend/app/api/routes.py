@@ -14,6 +14,7 @@ from app.models.account import Account
 from app.models.category import Category
 from app.models.merchant_rule import MerchantRule
 from app.models.planned_payment import PlannedPayment
+from app.models.savings_bucket import SavingsBucket
 from app.models.transaction import Transaction
 from app.schemas.imports import ImportBatchResponse, ImportFailureResponse, ImportSummaryResponse
 from app.schemas.account import AccountResponse
@@ -31,6 +32,12 @@ from app.schemas.planned_payment import (
     PlannedPaymentUpdateRequest,
     PlannedPaymentValidationRequest,
     PlannedPaymentValidationResponse,
+)
+from app.schemas.savings_bucket import (
+    EssentialExpenseLineItemResponse,
+    SavingsBucketResponse,
+    SavingsBucketUpdateRequest,
+    SavingsPlanSummaryResponse,
 )
 from app.schemas.spending_assumption import SpendingAssumptionResponse, SpendingAssumptionUpdateRequest
 from app.schemas.transaction import (
@@ -55,6 +62,13 @@ from app.services.planned_payment_service import (
     require_account,
     require_optional_category,
     validate_planned_payment_payload,
+)
+from app.services.savings_bucket_service import (
+    EssentialExpenseLineItem,
+    SavingsPlanSummary,
+    build_savings_plan_summary,
+    list_savings_buckets,
+    update_savings_bucket,
 )
 from app.services.spending_assumption_service import (
     SpendingAssumptionSnapshot,
@@ -483,6 +497,43 @@ def update_spending_assumption(
     return _serialize_spending_assumption(snapshot)
 
 
+@router.get("/savings-buckets", response_model=list[SavingsBucketResponse])
+def get_savings_buckets(session: Session = Depends(get_session)) -> list[SavingsBucketResponse]:
+    return [_serialize_savings_bucket(bucket) for bucket in list_savings_buckets(session=session)]
+
+
+@router.patch("/savings-buckets/{bucket_id}", response_model=SavingsBucketResponse)
+def patch_savings_bucket(
+    bucket_id: int,
+    payload: SavingsBucketUpdateRequest,
+    session: Session = Depends(get_session),
+) -> SavingsBucketResponse:
+    bucket = update_savings_bucket(
+        session=session,
+        bucket_id=bucket_id,
+        current_amount=payload.current_amount,
+        target_amount=payload.target_amount,
+        monthly_contribution=payload.monthly_contribution,
+        priority=payload.priority,
+        is_protected=payload.is_protected,
+        allow_scenario_withdrawal=payload.allow_scenario_withdrawal,
+        fields=payload.model_fields_set,
+    )
+    return _serialize_savings_bucket(bucket)
+
+
+@router.get("/savings-buckets/summary", response_model=SavingsPlanSummaryResponse)
+def get_savings_summary(
+    scenario_withdrawal_amount: float = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+) -> SavingsPlanSummaryResponse:
+    summary = build_savings_plan_summary(
+        session=session,
+        scenario_withdrawal_amount=scenario_withdrawal_amount,
+    )
+    return _serialize_savings_summary(summary)
+
+
 def _serialize_category(category: Category) -> CategoryResponse:
     return CategoryResponse(
         id=category.id,
@@ -559,6 +610,61 @@ def _serialize_spending_assumption(snapshot: SpendingAssumptionSnapshot) -> Spen
         baseline_months=snapshot.baseline_months,
         baseline_month_count=snapshot.baseline_month_count,
         confidence=snapshot.confidence,
+    )
+
+
+def _serialize_savings_bucket(bucket: SavingsBucket) -> SavingsBucketResponse:
+    target_gap = max(0.0, (bucket.target_amount or 0.0) - bucket.current_amount) if bucket.target_amount is not None else None
+    progress_ratio = None
+    if bucket.target_amount is not None and bucket.target_amount > 0:
+        progress_ratio = round(min(bucket.current_amount / bucket.target_amount, 1.0), 4)
+    return SavingsBucketResponse(
+        id=bucket.id,
+        name=bucket.name,
+        bucket_type=bucket.bucket_type,
+        current_amount=bucket.current_amount,
+        target_amount=bucket.target_amount,
+        monthly_contribution=bucket.monthly_contribution,
+        priority=bucket.priority,
+        is_protected=bucket.is_protected,
+        allow_scenario_withdrawal=bucket.allow_scenario_withdrawal,
+        progress_ratio=progress_ratio,
+        target_gap=round(target_gap, 2) if target_gap is not None else None,
+        forecast_reserved_amount=round(bucket.current_amount if bucket.is_protected else 0.0, 2),
+    )
+
+
+def _serialize_savings_summary(summary: SavingsPlanSummary) -> SavingsPlanSummaryResponse:
+    return SavingsPlanSummaryResponse(
+        protected_current_amount=summary.protected_current_amount,
+        protected_monthly_contribution=summary.protected_monthly_contribution,
+        forecast_reserved_current_amount=summary.forecast_reserved_current_amount,
+        essential_monthly_expenses=summary.essential_monthly_expenses,
+        essential_breakdown=[
+            EssentialExpenseLineItemResponse(
+                label=item.label,
+                source_type=item.source_type,
+                monthly_amount=item.monthly_amount,
+            )
+            for item in summary.essential_breakdown
+        ],
+        three_month_target=summary.three_month_target,
+        six_month_target=summary.six_month_target,
+        emergency_fund_current_amount=summary.emergency_fund_current_amount,
+        emergency_fund_monthly_contribution=summary.emergency_fund_monthly_contribution,
+        emergency_fund_target_amount=summary.emergency_fund_target_amount,
+        gap_to_current_target=summary.gap_to_current_target,
+        gap_to_three_month_target=summary.gap_to_three_month_target,
+        gap_to_six_month_target=summary.gap_to_six_month_target,
+        target_completion_date=summary.target_completion_date,
+        three_month_completion_date=summary.three_month_completion_date,
+        six_month_completion_date=summary.six_month_completion_date,
+        scenario_withdrawal_allowed=summary.scenario_withdrawal_allowed,
+        scenario_withdrawal_amount=summary.scenario_withdrawal_amount,
+        scenario_remaining_amount=summary.scenario_remaining_amount,
+        scenario_recovery_date_to_current_target=summary.scenario_recovery_date_to_current_target,
+        scenario_recovery_date_to_three_month_target=summary.scenario_recovery_date_to_three_month_target,
+        scenario_recovery_date_to_six_month_target=summary.scenario_recovery_date_to_six_month_target,
     )
 
 
