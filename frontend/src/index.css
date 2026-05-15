@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #eff6ff;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.45), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(234, 88, 12, 0.24), transparent 28%),
+    linear-gradient(160deg, #08111f 0%, #12253f 56%, #1d3557 100%);
+  font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
