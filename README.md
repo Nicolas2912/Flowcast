@@ -158,6 +158,35 @@ Current emergency-fund behavior:
   contribution,
 - protected buckets are documented as unavailable for automatic goal spending.
 
+## Building forecast lines and goal simulations
+
+The forecast workspace now adds the main product engine:
+
+- the backend returns deterministic daily forecast points for 90 days, 6 months,
+  and 12 months,
+- default optimistic, expected, and conservative scenarios vary only the
+  variable spending layer,
+- the forecast includes trusted current balance, recurring income, planned
+  payments, variable spending, protected savings contributions, and month-end
+  goal allocations,
+- multiple lifestyle goals can be created with saved progress, priority,
+  funding strategy, and optional target dates,
+- a custom scenario endpoint compares one-off expenses, one-off income,
+  contribution overrides, emergency-fund withdrawals, and temporary goal
+  priority changes against the base case.
+
+Current forecast behavior:
+
+- income events come from planned income payments when present, otherwise from
+  recurring historical income transactions,
+- variable spending uses the derived spending assumptions that already power the
+  planning workspace,
+- protected savings remain reserved before goal funding is allocated,
+- goal funding runs at month end and supports both `priority` and `parallel`
+  strategies,
+- imports and forecast-relevant transaction edits refresh derived values
+  immediately so the forecast reflects current data without a restart.
+
 ## Common commands
 
 ### Backend
@@ -187,11 +216,14 @@ pnpm build
 - `GET/POST/PATCH /api/v1/planned-payments` manage manual future obligations with next-charge and monthly-equivalent output.
 - `GET/POST /api/v1/spending-assumptions` plus `PATCH /api/v1/spending-assumptions/{id}` manage derived and manual variable-spend assumptions.
 - `GET/PATCH /api/v1/savings-buckets` plus `GET /api/v1/savings-buckets/summary` manage protected savings inputs and emergency-fund target calculations.
+- `GET/POST/PATCH /api/v1/goals` manage lifestyle goals and saved progress.
+- `GET /api/v1/forecast` returns optimistic, expected, and conservative daily forecast lines for all supported horizons.
+- `POST /api/v1/forecast/scenario` compares a custom trade-off scenario against the base case.
 - `GET/POST/PATCH/DELETE /api/v1/merchant-rules` and `POST /api/v1/merchant-rules/apply` support deterministic categorization.
 - API errors use one response shape for validation, not-found, and database failures.
 - SQLite schema covers accounts, categories, imports, transactions, planned payments, savings buckets, goals, assumptions, and app settings.
 - Default seed data creates one C24 account and a parent-child category hierarchy without duplicates.
-- Frontend now includes typed workspaces for imports, transaction review, planned payments, spending assumptions, and protected savings.
+- Frontend now includes typed workspaces for imports, transaction review, planned payments, spending assumptions, protected savings, and forecast/goal simulation.
 
 ## Notes
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ForecastWorkspace } from "./components/forecast/forecast-workspace";
 import { ImportPanel } from "./components/import/import-panel";
 import { PlanningWorkspace } from "./components/planning/planning-workspace";
 import { SavingsWorkspace } from "./components/savings/savings-workspace";
@@ -42,20 +43,20 @@ export default function App() {
         <div className="rounded-[32px] border border-white/10 bg-slate-950/35 p-8 shadow-float backdrop-blur">
           <p className="text-xs uppercase tracking-[0.38em] text-sky-200/65">Flowcast forecast inputs</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight text-white md:text-5xl">
-            The app now holds transactions, planned obligations, and protected savings in one forecasting workspace.
+            The app now turns transactions, obligations, savings, and goals into deterministic daily forecast paths.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-sky-50/78">
-            Instead of treating ETF contributions and the Notgroschen like vague notes, Flowcast now models them as
-            protected cash inputs alongside the transaction and planning layers the forecast engine will build on next.
+            Instead of stopping at setup data, Flowcast now projects balances forward, compares multiple spending
+            scenarios, and shows when lifestyle goals become affordable under explicit trade-offs.
           </p>
         </div>
 
         <div className="rounded-[32px] border border-white/10 bg-white/8 p-8 shadow-float backdrop-blur">
           <p className="text-xs uppercase tracking-[0.32em] text-sky-200/65">Current focus</p>
-          <p className="mt-4 text-2xl font-semibold text-white">Protected savings before full forecast simulation</p>
+          <p className="mt-4 text-2xl font-semibold text-white">Explainable forecast lines over one black-box number</p>
           <p className="mt-3 text-base leading-7 text-sky-50/78">
-            Future goal math will only be trustworthy if the app knows which money is already reserved, which costs are
-            essential, and how long a withdrawal would take to repair.
+            Daily points, risk metrics, and goal dates all come from the same deterministic engine, so scenario changes
+            stay visible and debuggable instead of being hidden behind hand-wavy summaries.
           </p>
         </div>
       </section>
@@ -65,6 +66,7 @@ export default function App() {
       <TransactionWorkspace />
       <PlanningWorkspace />
       <SavingsWorkspace />
+      <ForecastWorkspace />
     </main>
   );
 }

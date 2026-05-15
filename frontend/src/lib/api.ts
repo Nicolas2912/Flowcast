@@ -259,6 +259,110 @@ export type SavingsPlanSummaryResponse = {
   scenario_recovery_date_to_six_month_target: string | null;
 };
 
+export type GoalResponse = {
+  id: number;
+  name: string;
+  target_amount: number;
+  current_saved_amount: number;
+  priority: number;
+  goal_type: string;
+  funding_strategy: string;
+  target_date: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GoalPayload = {
+  name: string;
+  target_amount: number;
+  current_saved_amount?: number;
+  priority?: number;
+  goal_type?: string;
+  funding_strategy?: string;
+  target_date?: string | null;
+  is_active?: boolean;
+  notes?: string | null;
+};
+
+export type ForecastPointResponse = {
+  date: string;
+  balance: number;
+  available_balance: number;
+  goal_funded_amount: number;
+};
+
+export type ForecastRiskResponse = {
+  minimum_balance: number;
+  first_negative_date: string | null;
+  negative_day_count: number;
+  ending_balance: number;
+};
+
+export type GoalForecastResponse = {
+  goal_id: number;
+  goal_name: string;
+  priority: number;
+  target_amount: number;
+  current_saved_amount: number;
+  projected_saved_amount: number;
+  remaining_gap: number;
+  affordability_date: string | null;
+  funding_strategy: string;
+  target_date: string | null;
+  is_active: boolean;
+};
+
+export type ForecastHorizonResponse = {
+  days: number;
+  points: ForecastPointResponse[];
+  risk: ForecastRiskResponse;
+  goals: GoalForecastResponse[];
+};
+
+export type ForecastScenarioResponse = {
+  scenario_id: string;
+  label: string;
+  variable_spending_multiplier: number;
+  horizons: ForecastHorizonResponse[];
+};
+
+export type ForecastBundleResponse = {
+  generated_at: string;
+  scenarios: ForecastScenarioResponse[];
+};
+
+export type ScenarioGoalPriorityOverride = {
+  goal_id: number;
+  priority: number;
+};
+
+export type ScenarioCashAdjustmentPayload = {
+  date: string;
+  amount: number;
+  label: string;
+};
+
+export type ForecastScenarioPayload = {
+  name: string;
+  variable_spending_multiplier: number;
+  etf_monthly_contribution_override?: number | null;
+  emergency_fund_monthly_contribution_override?: number | null;
+  emergency_fund_withdrawal_amount?: number;
+  goal_priority_overrides?: ScenarioGoalPriorityOverride[];
+  one_off_expenses?: ScenarioCashAdjustmentPayload[];
+  one_off_incomes?: ScenarioCashAdjustmentPayload[];
+};
+
+export type ForecastComparisonResponse = {
+  base: ForecastScenarioResponse;
+  scenario: ForecastScenarioResponse;
+  ending_balance_delta_12m: number;
+  available_balance_delta_12m: number;
+  earliest_goal_delta_days: number | null;
+};
+
 export class HttpError extends Error {
   payload: ApiError;
 
@@ -386,6 +490,37 @@ export function fetchSavingsSummary(
       ? `?scenario_withdrawal_amount=${encodeURIComponent(String(scenarioWithdrawalAmount))}`
       : "";
   return request<SavingsPlanSummaryResponse>(`/api/v1/savings-buckets/summary${query}`);
+}
+
+export function fetchGoals(): Promise<GoalResponse[]> {
+  return request<GoalResponse[]>("/api/v1/goals");
+}
+
+export function createGoal(payload: GoalPayload): Promise<GoalResponse> {
+  return request<GoalResponse>("/api/v1/goals", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateGoal(id: number, payload: Partial<GoalPayload>): Promise<GoalResponse> {
+  return request<GoalResponse>(`/api/v1/goals/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchForecast(): Promise<ForecastBundleResponse> {
+  return request<ForecastBundleResponse>("/api/v1/forecast");
+}
+
+export function compareForecastScenario(
+  payload: ForecastScenarioPayload,
+): Promise<ForecastComparisonResponse> {
+  return request<ForecastComparisonResponse>("/api/v1/forecast/scenario", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateTransactionForecastSettings(
