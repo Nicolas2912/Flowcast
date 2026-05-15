@@ -22,3 +22,4 @@ class Category(Base):
 
     parent = relationship("Category", remote_side=[id], backref="children")
     merchant_rules = relationship("MerchantRule", back_populates="category")
+    spending_assumption = relationship("SpendingAssumption", back_populates="category", uselist=False)

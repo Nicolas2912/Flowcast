@@ -114,6 +114,25 @@ Deterministic categorization behavior:
 - regex rules are validated before they can be saved,
 - rule matching uses normalized transaction text built from payee, purpose, and raw import text.
 
+## Modeling future obligations and spending assumptions
+
+The planning workspace now covers the next input layer for forecasting:
+
+- planned payments can be entered as monthly, quarterly, yearly, or one-time obligations,
+- each planned payment exposes its next charge date and monthly equivalent,
+- planned payments can be deactivated without deleting their history,
+- variable spending assumptions are derived from the last three complete calendar months when available,
+- the partial current month is excluded from the default baseline,
+- one-off transactions can be excluded from the baseline by marking them excluded in the transaction table,
+- manual assumption overrides can replace the automatic baseline and later revert back to automatic.
+
+Current baseline behavior:
+
+- only variable expense categories are used,
+- excluded transactions and internal transfers are skipped,
+- fixed planned payments do not affect variable spending baselines,
+- the UI shows automatic amount, manual amount, effective amount, baseline months used, and confidence.
+
 ## Common commands
 
 ### Backend
@@ -139,11 +158,14 @@ pnpm build
 - `GET /api/v1/categories` plus `POST/PATCH /api/v1/categories` manage the seeded category model.
 - `GET /api/v1/transactions` provides filtered, paginated transaction review data.
 - `PATCH /api/v1/transactions/{id}/category` and `POST /api/v1/transactions/bulk-category` support manual categorization.
+- `PATCH /api/v1/transactions/{id}/forecast-settings` controls per-transaction forecast exclusion.
+- `GET/POST/PATCH /api/v1/planned-payments` manage manual future obligations with next-charge and monthly-equivalent output.
+- `GET/POST /api/v1/spending-assumptions` plus `PATCH /api/v1/spending-assumptions/{id}` manage derived and manual variable-spend assumptions.
 - `GET/POST/PATCH/DELETE /api/v1/merchant-rules` and `POST /api/v1/merchant-rules/apply` support deterministic categorization.
 - API errors use one response shape for validation, not-found, and database failures.
 - SQLite schema covers accounts, categories, imports, transactions, planned payments, savings buckets, goals, assumptions, and app settings.
 - Default seed data creates one C24 account and a parent-child category hierarchy without duplicates.
-- Frontend now includes a typed transaction workspace with filtering, manual fixes, bulk edits, and merchant-rule management.
+- Frontend now includes a typed transaction workspace plus planning panels for planned payments and spending assumptions.
 
 ## Notes
 

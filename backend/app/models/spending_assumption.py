@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.time import utc_now_naive
 from app.db.base import Base
 
 
@@ -17,5 +18,7 @@ class SpendingAssumption(Base):
     auto_monthly_amount: Mapped[float | None] = mapped_column(Float)
     manual_monthly_amount: Mapped[float | None] = mapped_column(Float)
     effective_monthly_amount: Mapped[float] = mapped_column(Float, nullable=False)
-    last_recalculated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_recalculated_at: Mapped[datetime | None] = mapped_column(DateTime, default=utc_now_naive)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    category = relationship("Category", back_populates="spending_assumption")

@@ -102,6 +102,7 @@ export type TransactionResponse = {
   category_assignment_method: string | null;
   source_import_id: number | null;
   source_import_filename: string | null;
+  is_excluded_from_forecast: boolean;
   is_pending: boolean;
 };
 
@@ -135,6 +136,56 @@ export type MerchantRuleResponse = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type PlannedPaymentResponse = {
+  id: number;
+  account_id: number;
+  account_name: string;
+  name: string;
+  amount: number;
+  payment_type: string;
+  frequency: "monthly" | "quarterly" | "yearly" | "one_time";
+  exact_date: string | null;
+  day_of_month: number | null;
+  month_of_year: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  is_active: boolean;
+  notes: string | null;
+  next_charge_date: string | null;
+  monthly_equivalent: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlannedPaymentPayload = {
+  account_id: number;
+  name: string;
+  amount: number;
+  payment_type: string;
+  frequency: "monthly" | "quarterly" | "yearly" | "one_time";
+  exact_date?: string | null;
+  day_of_month?: number | null;
+  month_of_year?: number | null;
+  category_id?: number | null;
+  is_active?: boolean;
+  notes?: string | null;
+};
+
+export type SpendingAssumptionResponse = {
+  id: number;
+  category_id: number;
+  category_name: string;
+  calculation_method: string;
+  auto_monthly_amount: number | null;
+  manual_monthly_amount: number | null;
+  effective_monthly_amount: number;
+  last_recalculated_at: string | null;
+  is_active: boolean;
+  baseline_months: string[];
+  baseline_month_count: number;
+  confidence: string;
 };
 
 export type MerchantRulePayload = {
@@ -258,6 +309,16 @@ export function updateTransactionCategory(transactionId: string, categoryId: num
   });
 }
 
+export function updateTransactionForecastSettings(
+  transactionId: string,
+  payload: { is_excluded_from_forecast: boolean },
+): Promise<TransactionResponse> {
+  return request<TransactionResponse>(`/api/v1/transactions/${transactionId}/forecast-settings`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function bulkUpdateTransactionCategory(
   transactionIds: string[],
   categoryId: number | null,
@@ -299,5 +360,46 @@ export async function deleteMerchantRule(id: number): Promise<void> {
 export function runMerchantRules(): Promise<CategorizationRunResponse> {
   return request<CategorizationRunResponse>("/api/v1/merchant-rules/apply", {
     method: "POST",
+  });
+}
+
+export function fetchPlannedPayments(): Promise<PlannedPaymentResponse[]> {
+  return request<PlannedPaymentResponse[]>("/api/v1/planned-payments");
+}
+
+export function createPlannedPayment(payload: PlannedPaymentPayload): Promise<PlannedPaymentResponse> {
+  return request<PlannedPaymentResponse>("/api/v1/planned-payments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePlannedPayment(
+  id: number,
+  payload: Partial<PlannedPaymentPayload>,
+): Promise<PlannedPaymentResponse> {
+  return request<PlannedPaymentResponse>(`/api/v1/planned-payments/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchSpendingAssumptions(): Promise<SpendingAssumptionResponse[]> {
+  return request<SpendingAssumptionResponse[]>("/api/v1/spending-assumptions");
+}
+
+export function recalculateSpendingAssumptions(): Promise<SpendingAssumptionResponse[]> {
+  return request<SpendingAssumptionResponse[]>("/api/v1/spending-assumptions/recalculate", {
+    method: "POST",
+  });
+}
+
+export function updateSpendingAssumption(
+  id: number,
+  payload: { manual_monthly_amount?: number | null; revert_to_automatic?: boolean },
+): Promise<SpendingAssumptionResponse> {
+  return request<SpendingAssumptionResponse>(`/api/v1/spending-assumptions/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }

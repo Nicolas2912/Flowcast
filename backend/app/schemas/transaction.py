@@ -20,6 +20,7 @@ class TransactionResponse(BaseModel):
     category_assignment_method: str | None
     source_import_id: int | None
     source_import_filename: str | None
+    is_excluded_from_forecast: bool
     is_pending: bool
 
 
@@ -42,3 +43,7 @@ class BulkTransactionCategoryUpdateRequest(BaseModel):
 
 class BulkTransactionCategoryUpdateResponse(BaseModel):
     updated_count: int
+
+
+class TransactionForecastSettingsUpdateRequest(BaseModel):
+    is_excluded_from_forecast: bool
