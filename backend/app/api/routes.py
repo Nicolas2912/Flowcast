@@ -12,6 +12,7 @@ from app.core.errors import DomainValidationError, NotFoundError
 from app.core.time import utc_now_naive
 from app.models.account import Account
 from app.models.category import Category
+from app.models.goal import Goal
 from app.models.merchant_rule import MerchantRule
 from app.models.planned_payment import PlannedPayment
 from app.models.savings_bucket import SavingsBucket
@@ -19,6 +20,17 @@ from app.models.transaction import Transaction
 from app.schemas.imports import ImportBatchResponse, ImportFailureResponse, ImportSummaryResponse
 from app.schemas.account import AccountResponse
 from app.schemas.category import CategoryCreateRequest, CategoryResponse, CategoryUpdateRequest
+from app.schemas.forecast import (
+    ForecastBundleResponse,
+    ForecastComparisonResponse,
+    ForecastHorizonResponse,
+    ForecastPointResponse,
+    ForecastRiskResponse,
+    ForecastScenarioRequest,
+    ForecastScenarioResponse,
+    GoalForecastResponse,
+)
+from app.schemas.goal import GoalCreateRequest, GoalResponse, GoalUpdateRequest
 from app.schemas.health import HealthResponse
 from app.schemas.merchant_rule import (
     CategorizationRunResponse,
@@ -53,6 +65,26 @@ from app.services.categorization_service import (
     require_category,
     validate_pattern_type,
     validate_regex_pattern,
+)
+from app.services.derived_state_service import refresh_derived_state
+from app.services.forecast_service import (
+    ForecastComparison,
+    ForecastHorizon,
+    ForecastPoint,
+    ForecastRisk,
+    ForecastScenario,
+    ForecastScenarioConfig,
+    GoalProjection,
+    ScenarioCashAdjustment,
+    ScenarioGoalPriorityOverride,
+    build_custom_scenario_comparison,
+    build_default_forecast,
+)
+from app.services.goal_service import (
+    list_goals,
+    normalize_funding_strategy,
+    normalize_goal_type,
+    require_goal,
 )
 from app.services.import_service import import_c24_csv, list_import_batches
 from app.services.planned_payment_service import (
@@ -94,9 +126,99 @@ def get_health(session: Session = Depends(get_session)) -> HealthResponse:
     )
 
 
+@router.get("/forecast", response_model=ForecastBundleResponse)
+def get_forecast(session: Session = Depends(get_session)) -> ForecastBundleResponse:
+    scenarios = build_default_forecast(session=session)
+    return ForecastBundleResponse(
+        generated_at=utc_now_naive().date(),
+        scenarios=[_serialize_forecast_scenario(item) for item in scenarios],
+    )
+
+
+@router.post("/forecast/scenario", response_model=ForecastComparisonResponse)
+def compare_forecast_scenario(
+    payload: ForecastScenarioRequest,
+    session: Session = Depends(get_session),
+) -> ForecastComparisonResponse:
+    comparison = build_custom_scenario_comparison(
+        session=session,
+        config=ForecastScenarioConfig(
+            name=payload.name,
+            variable_spending_multiplier=payload.variable_spending_multiplier,
+            etf_monthly_contribution_override=payload.etf_monthly_contribution_override,
+            emergency_fund_monthly_contribution_override=payload.emergency_fund_monthly_contribution_override,
+            emergency_fund_withdrawal_amount=payload.emergency_fund_withdrawal_amount,
+            goal_priority_overrides=tuple(
+                ScenarioGoalPriorityOverride(goal_id=item.goal_id, priority=item.priority)
+                for item in payload.goal_priority_overrides
+            ),
+            one_off_expenses=tuple(
+                ScenarioCashAdjustment(date=item.date, amount=item.amount, label=item.label)
+                for item in payload.one_off_expenses
+            ),
+            one_off_incomes=tuple(
+                ScenarioCashAdjustment(date=item.date, amount=item.amount, label=item.label)
+                for item in payload.one_off_incomes
+            ),
+        ),
+    )
+    return _serialize_forecast_comparison(comparison)
+
+
 @router.get("/accounts", response_model=list[AccountResponse])
 def list_accounts(session: Session = Depends(get_session)) -> list[Account]:
     return session.query(Account).order_by(Account.id.asc()).all()
+
+
+@router.get("/goals", response_model=list[GoalResponse])
+def get_goals(session: Session = Depends(get_session)) -> list[GoalResponse]:
+    return [_serialize_goal(goal) for goal in list_goals(session=session)]
+
+
+@router.post("/goals", response_model=GoalResponse, status_code=201)
+def create_goal(payload: GoalCreateRequest, session: Session = Depends(get_session)) -> GoalResponse:
+    goal = Goal(
+        name=payload.name.strip(),
+        target_amount=payload.target_amount,
+        current_saved_amount=payload.current_saved_amount,
+        priority=payload.priority,
+        goal_type=normalize_goal_type(payload.goal_type),
+        funding_strategy=normalize_funding_strategy(payload.funding_strategy),
+        target_date=payload.target_date,
+        is_active=payload.is_active,
+        notes=payload.notes.strip() if payload.notes else None,
+    )
+    session.add(goal)
+    session.commit()
+    session.refresh(goal)
+    return _serialize_goal(goal)
+
+
+@router.patch("/goals/{goal_id}", response_model=GoalResponse)
+def patch_goal(goal_id: int, payload: GoalUpdateRequest, session: Session = Depends(get_session)) -> GoalResponse:
+    goal = require_goal(session, goal_id)
+    fields = payload.model_fields_set
+    if "name" in fields and payload.name is not None:
+        goal.name = payload.name.strip()
+    if "target_amount" in fields and payload.target_amount is not None:
+        goal.target_amount = payload.target_amount
+    if "current_saved_amount" in fields and payload.current_saved_amount is not None:
+        goal.current_saved_amount = payload.current_saved_amount
+    if "priority" in fields and payload.priority is not None:
+        goal.priority = payload.priority
+    if "goal_type" in fields and payload.goal_type is not None:
+        goal.goal_type = normalize_goal_type(payload.goal_type)
+    if "funding_strategy" in fields and payload.funding_strategy is not None:
+        goal.funding_strategy = normalize_funding_strategy(payload.funding_strategy)
+    if "target_date" in fields:
+        goal.target_date = payload.target_date
+    if "is_active" in fields and payload.is_active is not None:
+        goal.is_active = payload.is_active
+    if "notes" in fields:
+        goal.notes = payload.notes.strip() if payload.notes else None
+    session.commit()
+    session.refresh(goal)
+    return _serialize_goal(goal)
 
 
 @router.get("/categories", response_model=list[CategoryResponse])
@@ -260,6 +382,7 @@ async def upload_c24_csv(
         file_bytes=file_bytes,
         account_id=account_id,
     )
+    refresh_derived_state(session=session, apply_rules=True)
     return ImportSummaryResponse(
         import_batch_id=summary.import_batch.id,
         source_filename=summary.import_batch.source_filename,
@@ -351,6 +474,7 @@ def update_transaction_category(
     transaction.category_assignment_method = "manual" if payload.category_id is not None else "manual_clear"
     session.commit()
     session.refresh(transaction)
+    refresh_derived_state(session=session, apply_rules=False)
     return _serialize_transaction(transaction)
 
 
@@ -366,6 +490,7 @@ def update_transaction_forecast_settings(
     transaction.is_excluded_from_forecast = payload.is_excluded_from_forecast
     session.commit()
     session.refresh(transaction)
+    refresh_derived_state(session=session, apply_rules=False)
     return _serialize_transaction(transaction)
 
 
@@ -388,6 +513,7 @@ def bulk_update_transaction_category(
         transaction.category_id = payload.category_id
         transaction.category_assignment_method = "manual" if payload.category_id is not None else "manual_clear"
     session.commit()
+    refresh_derived_state(session=session, apply_rules=False)
     return BulkTransactionCategoryUpdateResponse(updated_count=len(transactions))
 
 
@@ -462,6 +588,7 @@ def delete_merchant_rule(rule_id: int, session: Session = Depends(get_session)) 
 @router.post("/merchant-rules/apply", response_model=CategorizationRunResponse)
 def run_merchant_rules(session: Session = Depends(get_session)) -> CategorizationRunResponse:
     summary = apply_merchant_rules(session=session)
+    refresh_derived_state(session=session, apply_rules=False)
     return CategorizationRunResponse(
         processed_count=summary.processed_count,
         matched_count=summary.matched_count,
@@ -665,6 +792,85 @@ def _serialize_savings_summary(summary: SavingsPlanSummary) -> SavingsPlanSummar
         scenario_recovery_date_to_current_target=summary.scenario_recovery_date_to_current_target,
         scenario_recovery_date_to_three_month_target=summary.scenario_recovery_date_to_three_month_target,
         scenario_recovery_date_to_six_month_target=summary.scenario_recovery_date_to_six_month_target,
+    )
+
+
+def _serialize_goal(goal: Goal) -> GoalResponse:
+    return GoalResponse(
+        id=goal.id,
+        name=goal.name,
+        target_amount=goal.target_amount,
+        current_saved_amount=goal.current_saved_amount,
+        priority=goal.priority,
+        goal_type=goal.goal_type,
+        funding_strategy=goal.funding_strategy,
+        target_date=goal.target_date,
+        is_active=goal.is_active,
+        notes=goal.notes,
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+    )
+
+
+def _serialize_forecast_point(point: ForecastPoint) -> ForecastPointResponse:
+    return ForecastPointResponse(
+        date=point.date,
+        balance=point.balance,
+        available_balance=point.available_balance,
+        goal_funded_amount=point.goal_funded_amount,
+    )
+
+
+def _serialize_forecast_risk(risk: ForecastRisk) -> ForecastRiskResponse:
+    return ForecastRiskResponse(
+        minimum_balance=risk.minimum_balance,
+        first_negative_date=risk.first_negative_date,
+        negative_day_count=risk.negative_day_count,
+        ending_balance=risk.ending_balance,
+    )
+
+
+def _serialize_goal_projection(goal: GoalProjection) -> GoalForecastResponse:
+    return GoalForecastResponse(
+        goal_id=goal.goal_id,
+        goal_name=goal.goal_name,
+        priority=goal.priority,
+        target_amount=goal.target_amount,
+        current_saved_amount=goal.current_saved_amount,
+        projected_saved_amount=goal.projected_saved_amount,
+        remaining_gap=goal.remaining_gap,
+        affordability_date=goal.affordability_date,
+        funding_strategy=goal.funding_strategy,
+        target_date=goal.target_date,
+        is_active=goal.is_active,
+    )
+
+
+def _serialize_forecast_horizon(horizon: ForecastHorizon) -> ForecastHorizonResponse:
+    return ForecastHorizonResponse(
+        days=horizon.days,
+        points=[_serialize_forecast_point(point) for point in horizon.points],
+        risk=_serialize_forecast_risk(horizon.risk),
+        goals=[_serialize_goal_projection(goal) for goal in horizon.goals],
+    )
+
+
+def _serialize_forecast_scenario(scenario: ForecastScenario) -> ForecastScenarioResponse:
+    return ForecastScenarioResponse(
+        scenario_id=scenario.scenario_id,
+        label=scenario.label,
+        variable_spending_multiplier=scenario.variable_spending_multiplier,
+        horizons=[_serialize_forecast_horizon(horizon) for horizon in scenario.horizons],
+    )
+
+
+def _serialize_forecast_comparison(comparison: ForecastComparison) -> ForecastComparisonResponse:
+    return ForecastComparisonResponse(
+        base=_serialize_forecast_scenario(comparison.base),
+        scenario=_serialize_forecast_scenario(comparison.scenario),
+        ending_balance_delta_12m=comparison.ending_balance_delta_12m,
+        available_balance_delta_12m=comparison.available_balance_delta_12m,
+        earliest_goal_delta_days=comparison.earliest_goal_delta_days,
     )
 
 
