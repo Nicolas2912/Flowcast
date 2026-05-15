@@ -72,6 +72,27 @@ pnpm dev
 
 The Vite dev server proxies `/api/*` requests to `http://localhost:8000`.
 
+## Importing a C24 CSV
+
+You can keep exported C24 files in a local-only folder such as `data/imports/`.
+That directory is ignored by Git so your personal finance data stays out of the
+repository history.
+
+Current import flow:
+
+1. Start the backend and frontend.
+2. Open the frontend.
+3. Use the import panel to choose the seeded default account and upload your
+   exported C24 CSV.
+
+The importer currently:
+
+- detects comma and semicolon-delimited exports,
+- parses German currency and day-first dates,
+- stores import-batch metadata and provenance,
+- skips duplicate transactions across repeated or overlapping uploads,
+- shows inserted, duplicate, skipped, and failed row counts.
+
 ## Common commands
 
 ### Backend
@@ -93,10 +114,11 @@ pnpm build
 ## Current foundation
 
 - `GET /api/v1/health` provides backend and database health.
+- `POST /api/v1/imports/c24` imports a C24 CSV and returns a full import summary.
 - API errors use one response shape for validation, not-found, and database failures.
 - SQLite schema covers accounts, categories, imports, transactions, planned payments, savings buckets, goals, assumptions, and app settings.
 - Default seed data creates one C24 account and starter categories without duplicates.
-- Frontend has a typed API client and a live backend health card.
+- Frontend has a typed API client, a live backend health card, and a CSV import workflow.
 
 ## Notes
 

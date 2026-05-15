@@ -7,8 +7,11 @@ node_modules/
 dist/
 .coverage
 *.pyc
+*.egg-info/
 *.sqlite3
 *.db
 *.db-shm
 *.db-wal
+.DS_Store
 frontend/.pnpm-store/
+data/imports

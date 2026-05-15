@@ -27,3 +27,13 @@ class NotFoundError(FlowcastError):
             status_code=404,
             details=[{"resource": resource, "identifier": str(identifier)}],
         )
+
+
+class ImportValidationError(FlowcastError):
+    def __init__(self, message: str, details: list[dict[str, Any]] | None = None) -> None:
+        super().__init__(
+            code="import_validation_error",
+            message=message,
+            status_code=422,
+            details=details,
+        )

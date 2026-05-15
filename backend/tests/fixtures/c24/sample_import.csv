@@ -1,0 +1,4 @@
+Transaktionstyp,Buchungsdatum,Karteneinsatz,Betrag,Zahlungsempfänger,IBAN,BIC,Verwendungszweck,Beschreibung,Kontonummer,Kontoname,Kategorie,Unterkategorie,Bargeldabhebung
+SEPA-Lastschrift,15.05.2026,,"-70,00 €",Mainova,DE71500500000014846026,HELADEFFXXX,"KNR:20415609602/faellig 15.05.2026RG:Brutto 70,00. ABSL",Mainova Aktiengesellschaft,1669113201,C24 Smartkonto,Energie,Strom,
+Kartenzahlung,14.05.2026,13.05.2026 11:34,"-47,12 €",Bäckerei Küßner,,,,Einkauf Frühstück,1669113201,C24 Smartkonto,Lebensmittel,Bäckerei,
+SEPA-Überweisung,12.05.2026,,"29,95 €",4brands Reply GmbH Co.,DE81490800250334256600,DRESDEFF491,/INV/724582 30.4.2026,,1669113201,C24 Smartkonto,Weitere Einnahmen,Weitere Einnahmen,

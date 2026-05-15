@@ -1,0 +1,279 @@
+{
+  "version": 1,
+  "currency": "EUR",
+  "source_document": "calculation_contract.md",
+  "notes": [
+    "All amounts are decimal EUR values.",
+    "Dates use ISO 8601 calendar dates.",
+    "These scenarios are deterministic fixtures for future backend tests."
+  ],
+  "scenarios": [
+    {
+      "id": "normal_monthly_forecast",
+      "title": "Normal monthly forecast",
+      "purpose": "Verify standard monthly cash flow with protected savings and one lifestyle goal funding amount.",
+      "source_contract_sections": [
+        "4.4 Gross free cash flow",
+        "4.5 Protected free cash flow",
+        "13.1 Normal monthly forecast"
+      ],
+      "inputs": {
+        "current_balance": 1500.0,
+        "forecast_start_date": "2026-05-14",
+        "monthly_income": 3000.0,
+        "planned_payments": [
+          {
+            "name": "Rent",
+            "amount": 780.0,
+            "frequency": "monthly",
+            "essential": true
+          },
+          {
+            "name": "Internet",
+            "amount": 47.0,
+            "frequency": "monthly",
+            "essential": true
+          },
+          {
+            "name": "GEZ",
+            "amount": 18.0,
+            "frequency": "monthly",
+            "essential": true
+          },
+          {
+            "name": "Insurance",
+            "amount": 75.0,
+            "frequency": "monthly",
+            "essential": true
+          },
+          {
+            "name": "Subscriptions",
+            "amount": 45.0,
+            "frequency": "monthly",
+            "essential": false
+          }
+        ],
+        "variable_spending_baseline": 850.0,
+        "savings_buckets": {
+          "etf_monthly_contribution": 300.0,
+          "notgroschen_monthly_contribution": 150.0
+        },
+        "goals": []
+      },
+      "expected": {
+        "gross_free_cash_flow": 1185.0,
+        "protected_free_cash_flow": 735.0,
+        "negative_protected_free_cash_flow": false,
+        "lifestyle_goal_capacity_per_month": 735.0,
+        "protected_savings_used_automatically": false
+      }
+    },
+    {
+      "id": "negative_protected_free_cash_flow",
+      "title": "Negative protected free cash flow",
+      "purpose": "Verify that unsustainable assumptions block automatic lifestyle goal funding.",
+      "source_contract_sections": [
+        "4.5 Protected free cash flow",
+        "9.6 Protected free cash flow is zero or negative",
+        "13.7 Negative protected free cash flow"
+      ],
+      "inputs": {
+        "current_balance": 2200.0,
+        "forecast_start_date": "2026-05-14",
+        "monthly_income": 2500.0,
+        "fixed_planned_payments_total": 1050.0,
+        "variable_spending_baseline": 950.0,
+        "savings_buckets": {
+          "etf_monthly_contribution": 400.0,
+          "notgroschen_monthly_contribution": 200.0
+        },
+        "goals": [
+          {
+            "name": "Laptop",
+            "target_amount": 1400.0,
+            "current_saved_amount": 0.0,
+            "priority": 1
+          }
+        ]
+      },
+      "expected": {
+        "protected_free_cash_flow": -100.0,
+        "negative_protected_free_cash_flow": true,
+        "monthly_shortfall": 100.0,
+        "lifestyle_goal_capacity_per_month": 0.0,
+        "goal_funding_blocked": true,
+        "automatic_etf_reduction": false,
+        "automatic_notgroschen_reduction": false
+      }
+    },
+    {
+      "id": "protected_savings_are_not_goal_funding",
+      "title": "Protected savings do not count as lifestyle goal funding",
+      "purpose": "Verify that only protected free cash flow can fund goals in the base case.",
+      "source_contract_sections": [
+        "2.3 ETF and Notgroschen are protected by default",
+        "2.4 Protected savings may not be used for lifestyle goals unless explicitly modeled",
+        "8.9 What must never happen automatically"
+      ],
+      "inputs": {
+        "current_balance": 4000.0,
+        "forecast_start_date": "2026-05-14",
+        "monthly_income": 3000.0,
+        "fixed_planned_payments_total": 1600.0,
+        "variable_spending_baseline": 900.0,
+        "savings_buckets": {
+          "etf_current_amount": 8500.0,
+          "etf_monthly_contribution": 300.0,
+          "notgroschen_current_amount": 3000.0,
+          "notgroschen_target_amount": 3600.0,
+          "notgroschen_monthly_contribution": 150.0
+        },
+        "goals": [
+          {
+            "name": "Camera",
+            "target_amount": 1200.0,
+            "current_saved_amount": 0.0,
+            "priority": 1
+          }
+        ]
+      },
+      "expected": {
+        "gross_free_cash_flow": 500.0,
+        "protected_free_cash_flow": 50.0,
+        "lifestyle_goal_capacity_per_month": 50.0,
+        "goal_uses_etf_balance_automatically": false,
+        "goal_uses_notgroschen_balance_automatically": false,
+        "goal_reachable_under_current_assumptions": true,
+        "goal_completion_months": 24
+      }
+    },
+    {
+      "id": "multiple_goals_priority_allocation",
+      "title": "Multiple goals are funded by priority",
+      "purpose": "Verify month-by-month goal allocation order and completion dates.",
+      "source_contract_sections": [
+        "9.4 Priority order",
+        "9.5 Month-by-month allocation",
+        "13.8 Multiple goals funded by priority"
+      ],
+      "inputs": {
+        "current_balance": 3000.0,
+        "forecast_start_date": "2026-05-14",
+        "protected_free_cash_flow": 500.0,
+        "goals": [
+          {
+            "name": "Vacation",
+            "target_amount": 1200.0,
+            "current_saved_amount": 200.0,
+            "priority": 1
+          },
+          {
+            "name": "Laptop",
+            "target_amount": 1400.0,
+            "current_saved_amount": 400.0,
+            "priority": 2
+          }
+        ]
+      },
+      "expected": {
+        "goal_allocations_by_month": [
+          {
+            "month": 1,
+            "Vacation": 500.0,
+            "Laptop": 0.0
+          },
+          {
+            "month": 2,
+            "Vacation": 500.0,
+            "Laptop": 0.0
+          },
+          {
+            "month": 3,
+            "Vacation": 0.0,
+            "Laptop": 500.0
+          },
+          {
+            "month": 4,
+            "Vacation": 0.0,
+            "Laptop": 500.0
+          }
+        ],
+        "goal_completion_months": {
+          "Vacation": 2,
+          "Laptop": 4
+        },
+        "lower_priority_goal_receives_funding_before_higher_priority_goal_completes": false
+      }
+    },
+    {
+      "id": "notgroschen_withdrawal_scenario",
+      "title": "Goal funding with one-time Notgroschen withdrawal",
+      "purpose": "Verify explicit emergency-fund withdrawal scenarios and required downside reporting.",
+      "source_contract_sections": [
+        "8.8 Scenario withdrawal rules",
+        "10.3 One-time Notgroschen withdrawal",
+        "13.4 Goal affordability with Notgroschen withdrawal"
+      ],
+      "inputs": {
+        "current_balance": 1800.0,
+        "forecast_start_date": "2026-05-14",
+        "protected_free_cash_flow": 735.0,
+        "goal": {
+          "name": "Laptop",
+          "target_amount": 1400.0,
+          "current_saved_amount": 200.0,
+          "priority": 1
+        },
+        "notgroschen": {
+          "current_amount": 3000.0,
+          "target_amount": 3600.0,
+          "monthly_contribution": 150.0
+        },
+        "scenario_overrides": {
+          "notgroschen_withdrawal_amount": 500.0,
+          "notgroschen_withdrawal_date": "2026-05-15"
+        }
+      },
+      "expected": {
+        "goal_remaining_before_scenario": 1200.0,
+        "notgroschen_balance_after_withdrawal": 2500.0,
+        "emergency_fund_gap_after_withdrawal": 1100.0,
+        "goal_remaining_after_withdrawal_liquidity_applied": 700.0,
+        "goal_completion_months": 1,
+        "emergency_fund_recovery_months": 8,
+        "downside_report_required": true,
+        "uses_protected_savings_in_base_case": false
+      }
+    },
+    {
+      "id": "baseline_excludes_partial_current_month",
+      "title": "Variable spending baseline excludes the partial current month",
+      "purpose": "Verify baseline month selection and expected average output.",
+      "source_contract_sections": [
+        "6.1 Last three complete calendar months",
+        "6.2 Why partial current month is excluded",
+        "13.5 Variable spending baseline using last three complete months"
+      ],
+      "inputs": {
+        "today": "2026-05-14",
+        "monthly_variable_spending": {
+          "2026-02": 820.0,
+          "2026-03": 910.0,
+          "2026-04": 870.0,
+          "2026-05-partial": 300.0
+        }
+      },
+      "expected": {
+        "baseline_months": [
+          "2026-02",
+          "2026-03",
+          "2026-04"
+        ],
+        "excluded_partial_months": [
+          "2026-05-partial"
+        ],
+        "variable_spending_baseline": 866.67
+      }
+    }
+  ]
+}

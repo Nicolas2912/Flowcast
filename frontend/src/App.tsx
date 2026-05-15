@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ImportPanel } from "./components/import/import-panel";
 import { HealthCard } from "./components/health-card";
 import { fetchHealth, HttpError, type HealthResponse } from "./lib/api";
 
@@ -55,6 +56,7 @@ export default function App() {
       </section>
 
       <HealthCard error={error} health={health} loading={loading} onRetry={() => void loadHealth()} />
+      <ImportPanel />
     </main>
   );
 }
