@@ -33,3 +33,4 @@ class PlannedPayment(Base):
     )
 
     account = relationship("Account", back_populates="planned_payments")
+    category = relationship("Category")

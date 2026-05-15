@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_session
 from app.core.config import get_settings
 from app.core.errors import DomainValidationError, NotFoundError
+from app.core.time import utc_now_naive
 from app.models.account import Account
 from app.models.category import Category
 from app.models.merchant_rule import MerchantRule
+from app.models.planned_payment import PlannedPayment
 from app.models.transaction import Transaction
 from app.schemas.imports import ImportBatchResponse, ImportFailureResponse, ImportSummaryResponse
 from app.schemas.account import AccountResponse
@@ -24,13 +26,18 @@ from app.schemas.merchant_rule import (
     MerchantRuleUpdateRequest,
 )
 from app.schemas.planned_payment import (
+    PlannedPaymentCreateRequest,
+    PlannedPaymentResponse,
+    PlannedPaymentUpdateRequest,
     PlannedPaymentValidationRequest,
     PlannedPaymentValidationResponse,
 )
+from app.schemas.spending_assumption import SpendingAssumptionResponse, SpendingAssumptionUpdateRequest
 from app.schemas.transaction import (
     BulkTransactionCategoryUpdateRequest,
     BulkTransactionCategoryUpdateResponse,
     TransactionCategoryUpdateRequest,
+    TransactionForecastSettingsUpdateRequest,
     TransactionListResponse,
     TransactionResponse,
 )
@@ -41,6 +48,19 @@ from app.services.categorization_service import (
     validate_regex_pattern,
 )
 from app.services.import_service import import_c24_csv, list_import_batches
+from app.services.planned_payment_service import (
+    compute_planned_payment_schedule,
+    list_planned_payments,
+    normalize_payment_type,
+    require_account,
+    require_optional_category,
+    validate_planned_payment_payload,
+)
+from app.services.spending_assumption_service import (
+    SpendingAssumptionSnapshot,
+    recalculate_spending_assumptions,
+    update_spending_assumption_override,
+)
 from app.services.transaction_service import list_transactions
 
 
@@ -116,11 +136,101 @@ def update_category(
 def validate_planned_payment(
     payload: PlannedPaymentValidationRequest,
 ) -> PlannedPaymentValidationResponse:
+    normalized_frequency = validate_planned_payment_payload(
+        frequency=payload.frequency,
+        exact_date=payload.exact_date,
+        day_of_month=payload.day_of_month,
+        month_of_year=payload.month_of_year,
+    )
     return PlannedPaymentValidationResponse(
         accepted=True,
-        normalized_frequency=payload.frequency.lower(),
-        normalized_payment_type=payload.payment_type.lower(),
+        normalized_frequency=normalized_frequency,
+        normalized_payment_type=normalize_payment_type(payload.payment_type),
     )
+
+
+@router.get("/planned-payments", response_model=list[PlannedPaymentResponse])
+def get_planned_payments(session: Session = Depends(get_session)) -> list[PlannedPaymentResponse]:
+    return [_serialize_planned_payment(item) for item in list_planned_payments(session=session)]
+
+
+@router.post("/planned-payments", response_model=PlannedPaymentResponse, status_code=201)
+def create_planned_payment(
+    payload: PlannedPaymentCreateRequest,
+    session: Session = Depends(get_session),
+) -> PlannedPaymentResponse:
+    normalized_frequency = validate_planned_payment_payload(
+        frequency=payload.frequency,
+        exact_date=payload.exact_date,
+        day_of_month=payload.day_of_month,
+        month_of_year=payload.month_of_year,
+    )
+    require_account(session, payload.account_id)
+    require_optional_category(session, payload.category_id)
+    planned_payment = PlannedPayment(
+        account_id=payload.account_id,
+        name=payload.name.strip(),
+        amount=payload.amount,
+        payment_type=normalize_payment_type(payload.payment_type),
+        frequency=normalized_frequency,
+        exact_date=payload.exact_date,
+        day_of_month=payload.day_of_month,
+        month_of_year=payload.month_of_year,
+        category_id=payload.category_id,
+        is_active=payload.is_active,
+        notes=payload.notes.strip() if payload.notes else None,
+    )
+    session.add(planned_payment)
+    session.commit()
+    session.refresh(planned_payment)
+    return _serialize_planned_payment(planned_payment)
+
+
+@router.patch("/planned-payments/{planned_payment_id}", response_model=PlannedPaymentResponse)
+def update_planned_payment(
+    planned_payment_id: int,
+    payload: PlannedPaymentUpdateRequest,
+    session: Session = Depends(get_session),
+) -> PlannedPaymentResponse:
+    planned_payment = session.get(PlannedPayment, planned_payment_id)
+    if planned_payment is None:
+        raise NotFoundError("PlannedPayment", planned_payment_id)
+    if payload.account_id is not None:
+        require_account(session, payload.account_id)
+        planned_payment.account_id = payload.account_id
+    if payload.name is not None:
+        planned_payment.name = payload.name.strip()
+    if payload.amount is not None:
+        if payload.amount == 0:
+            raise DomainValidationError("amount must not be 0.", [{"field": "amount"}])
+        planned_payment.amount = payload.amount
+    if payload.payment_type is not None:
+        planned_payment.payment_type = normalize_payment_type(payload.payment_type)
+    if payload.is_active is not None:
+        planned_payment.is_active = payload.is_active
+    if payload.notes is not None:
+        planned_payment.notes = payload.notes.strip() or None
+    if payload.category_id is not None or "category_id" in payload.model_fields_set:
+        require_optional_category(session, payload.category_id)
+        planned_payment.category_id = payload.category_id
+
+    next_frequency = payload.frequency or planned_payment.frequency
+    next_exact_date = payload.exact_date if "exact_date" in payload.model_fields_set else planned_payment.exact_date
+    next_day_of_month = payload.day_of_month if "day_of_month" in payload.model_fields_set else planned_payment.day_of_month
+    next_month_of_year = payload.month_of_year if "month_of_year" in payload.model_fields_set else planned_payment.month_of_year
+    planned_payment.frequency = validate_planned_payment_payload(
+        frequency=next_frequency,
+        exact_date=next_exact_date,
+        day_of_month=next_day_of_month,
+        month_of_year=next_month_of_year,
+    )
+    planned_payment.exact_date = next_exact_date
+    planned_payment.day_of_month = next_day_of_month
+    planned_payment.month_of_year = next_month_of_year
+
+    session.commit()
+    session.refresh(planned_payment)
+    return _serialize_planned_payment(planned_payment)
 
 
 @router.post("/imports/c24", response_model=ImportSummaryResponse)
@@ -230,6 +340,21 @@ def update_transaction_category(
     return _serialize_transaction(transaction)
 
 
+@router.patch("/transactions/{transaction_id}/forecast-settings", response_model=TransactionResponse)
+def update_transaction_forecast_settings(
+    transaction_id: str,
+    payload: TransactionForecastSettingsUpdateRequest,
+    session: Session = Depends(get_session),
+) -> TransactionResponse:
+    transaction = session.get(Transaction, transaction_id)
+    if transaction is None:
+        raise NotFoundError("Transaction", transaction_id)
+    transaction.is_excluded_from_forecast = payload.is_excluded_from_forecast
+    session.commit()
+    session.refresh(transaction)
+    return _serialize_transaction(transaction)
+
+
 @router.post("/transactions/bulk-category", response_model=BulkTransactionCategoryUpdateResponse)
 def bulk_update_transaction_category(
     payload: BulkTransactionCategoryUpdateRequest,
@@ -331,6 +456,33 @@ def run_merchant_rules(session: Session = Depends(get_session)) -> Categorizatio
     )
 
 
+@router.get("/spending-assumptions", response_model=list[SpendingAssumptionResponse])
+def get_spending_assumptions(session: Session = Depends(get_session)) -> list[SpendingAssumptionResponse]:
+    snapshots = recalculate_spending_assumptions(session=session)
+    return [_serialize_spending_assumption(snapshot) for snapshot in snapshots]
+
+
+@router.post("/spending-assumptions/recalculate", response_model=list[SpendingAssumptionResponse])
+def recalculate_assumptions(session: Session = Depends(get_session)) -> list[SpendingAssumptionResponse]:
+    snapshots = recalculate_spending_assumptions(session=session)
+    return [_serialize_spending_assumption(snapshot) for snapshot in snapshots]
+
+
+@router.patch("/spending-assumptions/{assumption_id}", response_model=SpendingAssumptionResponse)
+def update_spending_assumption(
+    assumption_id: int,
+    payload: SpendingAssumptionUpdateRequest,
+    session: Session = Depends(get_session),
+) -> SpendingAssumptionResponse:
+    snapshot = update_spending_assumption_override(
+        session=session,
+        assumption_id=assumption_id,
+        manual_monthly_amount=payload.manual_monthly_amount,
+        revert_to_automatic=payload.revert_to_automatic,
+    )
+    return _serialize_spending_assumption(snapshot)
+
+
 def _serialize_category(category: Category) -> CategoryResponse:
     return CategoryResponse(
         id=category.id,
@@ -363,7 +515,50 @@ def _serialize_transaction(transaction: Transaction) -> TransactionResponse:
         category_assignment_method=transaction.category_assignment_method,
         source_import_id=transaction.source_import_id,
         source_import_filename=transaction.source_import.source_filename if transaction.source_import else None,
+        is_excluded_from_forecast=transaction.is_excluded_from_forecast,
         is_pending=transaction.is_pending,
+    )
+
+
+def _serialize_planned_payment(planned_payment: PlannedPayment) -> PlannedPaymentResponse:
+    schedule = compute_planned_payment_schedule(planned_payment, reference_date=utc_now_naive().date())
+    return PlannedPaymentResponse(
+        id=planned_payment.id,
+        account_id=planned_payment.account_id,
+        account_name=planned_payment.account.name if planned_payment.account else "",
+        name=planned_payment.name,
+        amount=planned_payment.amount,
+        payment_type=planned_payment.payment_type,
+        frequency=planned_payment.frequency,
+        exact_date=planned_payment.exact_date,
+        day_of_month=planned_payment.day_of_month,
+        month_of_year=planned_payment.month_of_year,
+        category_id=planned_payment.category_id,
+        category_name=planned_payment.category.name if planned_payment.category else None,
+        is_active=planned_payment.is_active,
+        notes=planned_payment.notes,
+        next_charge_date=schedule.next_charge_date,
+        monthly_equivalent=schedule.monthly_equivalent,
+        created_at=planned_payment.created_at,
+        updated_at=planned_payment.updated_at,
+    )
+
+
+def _serialize_spending_assumption(snapshot: SpendingAssumptionSnapshot) -> SpendingAssumptionResponse:
+    assumption = snapshot.assumption
+    return SpendingAssumptionResponse(
+        id=assumption.id,
+        category_id=assumption.category_id,
+        category_name=assumption.category.name if assumption.category else "",
+        calculation_method=assumption.calculation_method,
+        auto_monthly_amount=assumption.auto_monthly_amount,
+        manual_monthly_amount=assumption.manual_monthly_amount,
+        effective_monthly_amount=assumption.effective_monthly_amount,
+        last_recalculated_at=assumption.last_recalculated_at,
+        is_active=assumption.is_active,
+        baseline_months=snapshot.baseline_months,
+        baseline_month_count=snapshot.baseline_month_count,
+        confidence=snapshot.confidence,
     )
 
 

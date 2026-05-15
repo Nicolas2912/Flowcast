@@ -14,6 +14,7 @@ import {
   updateCategory,
   updateMerchantRule,
   updateTransactionCategory,
+  updateTransactionForecastSettings,
   type AccountResponse,
   type CategorizationRunResponse,
   type CategoryPayload,
@@ -262,6 +263,19 @@ export function TransactionWorkspace() {
     }
   }
 
+  async function handleForecastExclusionChange(transactionId: string, isExcluded: boolean) {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateTransactionForecastSettings(transactionId, { is_excluded_from_forecast: isExcluded });
+      await loadTransactions();
+    } catch (caughtError) {
+      setError(toErrorMessage(caughtError, "The transaction exclusion flag could not be updated."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleBulkCategorization() {
     if (selectedTransactionIds.length === 0 || bulkCategoryId === "") {
       return;
@@ -485,19 +499,20 @@ export function TransactionWorkspace() {
                 <th className="px-3">Category</th>
                 <th className="px-3">Method</th>
                 <th className="px-3">Import</th>
+                <th className="px-3">Exclude</th>
               </tr>
             </thead>
             <tbody>
               {tableLoading ? (
                 <tr>
-                  <td className="px-3 py-6 text-sm text-sky-100/70" colSpan={9}>
+                  <td className="px-3 py-6 text-sm text-sky-100/70" colSpan={10}>
                     Loading transactions...
                   </td>
                 </tr>
               ) : null}
               {!tableLoading && transactionItems.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-6 text-sm text-sky-100/70" colSpan={9}>
+                  <td className="px-3 py-6 text-sm text-sky-100/70" colSpan={10}>
                     No transactions match the current filters.
                   </td>
                 </tr>
@@ -549,6 +564,15 @@ export function TransactionWorkspace() {
                   </td>
                   <td className="rounded-r-2xl px-3 py-4 align-top text-sky-50/72">
                     {transaction.source_import_filename ?? "Direct"}
+                  </td>
+                  <td className="px-3 py-4 align-top text-center">
+                    <input
+                      checked={transaction.is_excluded_from_forecast}
+                      onChange={(event) =>
+                        void handleForecastExclusionChange(transaction.id, event.target.checked)
+                      }
+                      type="checkbox"
+                    />
                   </td>
                 </tr>
               ))}

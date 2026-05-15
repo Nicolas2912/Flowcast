@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ImportPanel } from "./components/import/import-panel";
+import { PlanningWorkspace } from "./components/planning/planning-workspace";
 import { TransactionWorkspace } from "./components/transactions/transaction-workspace";
 import { HealthCard } from "./components/health-card";
 import { fetchHealth, HttpError, type HealthResponse } from "./lib/api";
@@ -40,11 +41,11 @@ export default function App() {
         <div className="rounded-[32px] border border-white/10 bg-slate-950/35 p-8 shadow-float backdrop-blur">
           <p className="text-xs uppercase tracking-[0.38em] text-sky-200/65">Flowcast transaction truth</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight text-white md:text-5xl">
-            Imports now flow into a real review workspace with search, manual fixes, and deterministic rules.
+            Imports now feed a real planning workspace with transaction truth, future obligations, and spending assumptions.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-sky-50/78">
-            The app can finally move from raw CSV intake into trustworthy transaction curation, which is the step the
-            forecast engine depends on before planned payments and assumptions start to matter.
+            The app now covers both sides of the forecasting input layer: trustworthy categorized history and explicit
+            future expectations for recurring costs and variable spending.
           </p>
         </div>
 
@@ -52,8 +53,8 @@ export default function App() {
           <p className="text-xs uppercase tracking-[0.32em] text-sky-200/65">Current focus</p>
           <p className="mt-4 text-2xl font-semibold text-white">Predictable categorization over black-box guesses</p>
           <p className="mt-3 text-base leading-7 text-sky-50/78">
-            Manual choices stick, merchant rules stay explicit, and uncategorized rows are easy to isolate before any
-            forecasting logic builds on them.
+            Manual choices stick, recurring obligations stay separate from history, and variable spending baselines can
+            be corrected without rewriting imported transactions.
           </p>
         </div>
       </section>
@@ -61,6 +62,7 @@ export default function App() {
       <HealthCard error={error} health={health} loading={loading} onRetry={() => void loadHealth()} />
       <ImportPanel />
       <TransactionWorkspace />
+      <PlanningWorkspace />
     </main>
   );
 }
