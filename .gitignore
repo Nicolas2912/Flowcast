@@ -14,5 +14,6 @@ dist/
 *.db-wal
 .DS_Store
 frontend/.pnpm-store/
+frontend/.vite/
 .pnpm-store/
 data/imports

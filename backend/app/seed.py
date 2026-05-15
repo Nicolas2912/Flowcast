@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.account import Account
 from app.models.category import Category
+from app.services.savings_bucket_service import ensure_default_savings_buckets
 
 
 DEFAULT_ACCOUNT = {
@@ -74,6 +75,7 @@ def seed_defaults(session: Session) -> None:
         model.sort_order = category["sort_order"]
 
     session.commit()
+    ensure_default_savings_buckets(session)
 
 
 def main() -> None:

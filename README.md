@@ -133,6 +133,31 @@ Current baseline behavior:
 - fixed planned payments do not affect variable spending baselines,
 - the UI shows automatic amount, manual amount, effective amount, baseline months used, and confidence.
 
+## Protecting ETF and emergency fund savings
+
+The savings workspace now adds the last major input layer before the forecast
+engine itself:
+
+- default `ETF` and `Notgroschen` buckets are created automatically,
+- both buckets store current amount, target amount, monthly contribution,
+  priority, protection state, and scenario-withdrawal permission,
+- protected savings expose a reserved-current-cash value for later forecast
+  logic,
+- emergency-fund targets are derived from essential planned payments plus
+  essential spending assumptions,
+- the UI shows current target, three-month target, six-month target, and
+  recovery dates after a hypothetical withdrawal.
+
+Current emergency-fund behavior:
+
+- target suggestions use categories already marked essential,
+- monthly rent or utility-style obligations only count if they exist as planned
+  payments,
+- essential variable categories come from the spending-assumption layer,
+- recovery dates are estimated from the current Notgroschen amount and monthly
+  contribution,
+- protected buckets are documented as unavailable for automatic goal spending.
+
 ## Common commands
 
 ### Backend
@@ -161,11 +186,12 @@ pnpm build
 - `PATCH /api/v1/transactions/{id}/forecast-settings` controls per-transaction forecast exclusion.
 - `GET/POST/PATCH /api/v1/planned-payments` manage manual future obligations with next-charge and monthly-equivalent output.
 - `GET/POST /api/v1/spending-assumptions` plus `PATCH /api/v1/spending-assumptions/{id}` manage derived and manual variable-spend assumptions.
+- `GET/PATCH /api/v1/savings-buckets` plus `GET /api/v1/savings-buckets/summary` manage protected savings inputs and emergency-fund target calculations.
 - `GET/POST/PATCH/DELETE /api/v1/merchant-rules` and `POST /api/v1/merchant-rules/apply` support deterministic categorization.
 - API errors use one response shape for validation, not-found, and database failures.
 - SQLite schema covers accounts, categories, imports, transactions, planned payments, savings buckets, goals, assumptions, and app settings.
 - Default seed data creates one C24 account and a parent-child category hierarchy without duplicates.
-- Frontend now includes a typed transaction workspace plus planning panels for planned payments and spending assumptions.
+- Frontend now includes typed workspaces for imports, transaction review, planned payments, spending assumptions, and protected savings.
 
 ## Notes
 

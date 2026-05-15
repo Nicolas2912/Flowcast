@@ -204,6 +204,61 @@ export type CategorizationRunResponse = {
   cleared_count: number;
 };
 
+export type SavingsBucketResponse = {
+  id: number;
+  name: string;
+  bucket_type: "etf" | "emergency_fund" | string;
+  current_amount: number;
+  target_amount: number | null;
+  monthly_contribution: number;
+  priority: number;
+  is_protected: boolean;
+  allow_scenario_withdrawal: boolean;
+  progress_ratio: number | null;
+  target_gap: number | null;
+  forecast_reserved_amount: number;
+};
+
+export type SavingsBucketUpdatePayload = {
+  current_amount?: number;
+  target_amount?: number | null;
+  monthly_contribution?: number;
+  priority?: number;
+  is_protected?: boolean;
+  allow_scenario_withdrawal?: boolean;
+};
+
+export type EssentialExpenseLineItemResponse = {
+  label: string;
+  source_type: string;
+  monthly_amount: number;
+};
+
+export type SavingsPlanSummaryResponse = {
+  protected_current_amount: number;
+  protected_monthly_contribution: number;
+  forecast_reserved_current_amount: number;
+  essential_monthly_expenses: number;
+  essential_breakdown: EssentialExpenseLineItemResponse[];
+  three_month_target: number;
+  six_month_target: number;
+  emergency_fund_current_amount: number;
+  emergency_fund_monthly_contribution: number;
+  emergency_fund_target_amount: number | null;
+  gap_to_current_target: number | null;
+  gap_to_three_month_target: number;
+  gap_to_six_month_target: number;
+  target_completion_date: string | null;
+  three_month_completion_date: string | null;
+  six_month_completion_date: string | null;
+  scenario_withdrawal_allowed: boolean;
+  scenario_withdrawal_amount: number;
+  scenario_remaining_amount: number;
+  scenario_recovery_date_to_current_target: string | null;
+  scenario_recovery_date_to_three_month_target: string | null;
+  scenario_recovery_date_to_six_month_target: string | null;
+};
+
 export class HttpError extends Error {
   payload: ApiError;
 
@@ -307,6 +362,30 @@ export function updateTransactionCategory(transactionId: string, categoryId: num
     method: "PATCH",
     body: JSON.stringify({ category_id: categoryId }),
   });
+}
+
+export function fetchSavingsBuckets(): Promise<SavingsBucketResponse[]> {
+  return request<SavingsBucketResponse[]>("/api/v1/savings-buckets");
+}
+
+export function updateSavingsBucket(
+  bucketId: number,
+  payload: SavingsBucketUpdatePayload,
+): Promise<SavingsBucketResponse> {
+  return request<SavingsBucketResponse>(`/api/v1/savings-buckets/${bucketId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchSavingsSummary(
+  scenarioWithdrawalAmount?: number,
+): Promise<SavingsPlanSummaryResponse> {
+  const query =
+    typeof scenarioWithdrawalAmount === "number"
+      ? `?scenario_withdrawal_amount=${encodeURIComponent(String(scenarioWithdrawalAmount))}`
+      : "";
+  return request<SavingsPlanSummaryResponse>(`/api/v1/savings-buckets/summary${query}`);
 }
 
 export function updateTransactionForecastSettings(
