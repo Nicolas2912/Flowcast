@@ -8,6 +8,7 @@ import type {
   SavingsBucketResponse,
   SpendingAssumptionResponse,
   TransactionListResponse,
+  TransactionResponse,
 } from "../../lib/api";
 
 type AppData = {
@@ -30,6 +31,16 @@ type BreakdownRow = {
   value: number;
   ratio: number;
   tone: "fixed" | "variable" | "savings";
+};
+
+type TransactionMonthlySummary = {
+  fixedGroups: Record<string, number>;
+  fixedTotal: number;
+  incomeTotal: number;
+  savingsGroups: Record<string, number>;
+  savingsTotal: number;
+  variableGroups: Record<string, number>;
+  variableTotal: number;
 };
 
 const germanCurrency = new Intl.NumberFormat("de-DE", {
@@ -55,6 +66,10 @@ function formatCurrency(value: number): string {
 
 function formatCompact(value: number): string {
   return value % 1 === 0 ? `${Math.round(value).toLocaleString("de-DE")} €` : formatCurrency(value);
+}
+
+function hasValues(groups: Record<string, number>): boolean {
+  return Object.values(groups).some((value) => value > 0);
 }
 
 function clampPercentage(value: number): number {
@@ -113,6 +128,79 @@ function groupVariableSpend(spendingAssumptions: SpendingAssumptionResponse[]) {
   return totals;
 }
 
+function buildTransactionMonthlySummary(
+  transactions: TransactionResponse[],
+  categories: CategoryResponse[],
+): TransactionMonthlySummary {
+  const emptySummary: TransactionMonthlySummary = {
+    fixedGroups: {},
+    fixedTotal: 0,
+    incomeTotal: 0,
+    savingsGroups: {},
+    savingsTotal: 0,
+    variableGroups: {},
+    variableTotal: 0,
+  };
+  if (transactions.length === 0) {
+    return emptySummary;
+  }
+
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const currentMonthStart = new Date();
+  currentMonthStart.setDate(1);
+  currentMonthStart.setHours(0, 0, 0, 0);
+  const baselineStarts = Array.from({ length: 3 }, (_, index) => {
+    const date = new Date(currentMonthStart);
+    date.setMonth(currentMonthStart.getMonth() - (3 - index));
+    return date;
+  });
+  const baselineMonthKeys = new Set(
+    baselineStarts.map((date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`),
+  );
+  const baselineTransactions = transactions.filter((transaction) =>
+    baselineMonthKeys.has(transaction.booking_date.slice(0, 7)),
+  );
+  const divisor = baselineStarts.length || 1;
+
+  for (const transaction of baselineTransactions) {
+    const category = transaction.category_id ? categoriesById.get(transaction.category_id) : undefined;
+    if (!category) {
+      continue;
+    }
+    const amount = Math.abs(transaction.amount);
+    const label = category.name;
+
+    if (category.is_income && transaction.amount > 0) {
+      emptySummary.incomeTotal += amount;
+    } else if (category.is_saving && transaction.amount < 0) {
+      emptySummary.savingsGroups[label] = (emptySummary.savingsGroups[label] ?? 0) + amount;
+      emptySummary.savingsTotal += amount;
+    } else if (category.is_variable && transaction.amount < 0) {
+      emptySummary.variableGroups[label] = (emptySummary.variableGroups[label] ?? 0) + amount;
+      emptySummary.variableTotal += amount;
+    } else if (category.behavior_type === "fixed_expense" && transaction.amount < 0) {
+      emptySummary.fixedGroups[label] = (emptySummary.fixedGroups[label] ?? 0) + amount;
+      emptySummary.fixedTotal += amount;
+    }
+  }
+
+  return {
+    fixedGroups: Object.fromEntries(
+      Object.entries(emptySummary.fixedGroups).map(([label, value]) => [label, Math.round((value / divisor) * 100) / 100]),
+    ),
+    fixedTotal: Math.round((emptySummary.fixedTotal / divisor) * 100) / 100,
+    incomeTotal: Math.round((emptySummary.incomeTotal / divisor) * 100) / 100,
+    savingsGroups: Object.fromEntries(
+      Object.entries(emptySummary.savingsGroups).map(([label, value]) => [label, Math.round((value / divisor) * 100) / 100]),
+    ),
+    savingsTotal: Math.round((emptySummary.savingsTotal / divisor) * 100) / 100,
+    variableGroups: Object.fromEntries(
+      Object.entries(emptySummary.variableGroups).map(([label, value]) => [label, Math.round((value / divisor) * 100) / 100]),
+    ),
+    variableTotal: Math.round((emptySummary.variableTotal / divisor) * 100) / 100,
+  };
+}
+
 function buildGoalRows(goals: GoalForecastResponse[], fallbackGoals: GoalResponse[]) {
   if (goals.length > 0) {
     return goals.slice(0, 3).map((goal) => ({
@@ -159,11 +247,11 @@ function describeHeroGoal(goal: GoalForecastResponse | undefined, fallbackGoal: 
   }
 
   return {
-    label: "Laptop",
+    label: "first",
     current: 0,
-    target: 1500,
+    target: 0,
     progress: 0,
-    month: "a future month",
+    month: "after a goal is created",
   };
 }
 
@@ -171,26 +259,45 @@ export function DashboardOverview({ data, isLoading }: DashboardOverviewProps) {
   const expected90 = getExpectedHorizon(data.forecast, 90);
   const paymentGroups = groupPayments(data.plannedPayments);
   const variableGroups = groupVariableSpend(data.spendingAssumptions);
+  const transactionSummary = buildTransactionMonthlySummary(data.transactions?.items ?? [], data.categories);
   const savingsGroups = {
     etf: data.savingsBuckets.find((bucket) => bucket.bucket_type === "etf")?.monthly_contribution ?? 0,
     emergencyFund: data.savingsBuckets.find((bucket) => bucket.bucket_type === "emergency_fund")?.monthly_contribution ?? 0,
   };
 
-  const fixedTotal = Object.values(paymentGroups).reduce((sum, value) => sum + value, 0);
-  const variableTotal = Object.values(variableGroups).reduce((sum, value) => sum + value, 0);
-  const savingsTotal = Object.values(savingsGroups).reduce((sum, value) => sum + value, 0);
-  const incomeTotal = fixedTotal + variableTotal + savingsTotal;
+  const rawFixedTotal = Object.values(paymentGroups).reduce((sum, value) => sum + value, 0);
+  const rawVariableTotal = Object.values(variableGroups).reduce((sum, value) => sum + value, 0);
+  const rawSavingsTotal = Object.values(savingsGroups).reduce((sum, value) => sum + value, 0);
+  const fixedTotal = rawFixedTotal > 0 ? rawFixedTotal : transactionSummary.fixedTotal;
+  const variableTotal = rawVariableTotal > 0 ? rawVariableTotal : transactionSummary.variableTotal;
+  const savingsTotal = rawSavingsTotal > 0 ? rawSavingsTotal : transactionSummary.savingsTotal;
+  const incomeTotal = transactionSummary.incomeTotal > 0
+    ? transactionSummary.incomeTotal
+    : fixedTotal + variableTotal + savingsTotal;
+  const outflowTotal = fixedTotal + variableTotal + savingsTotal;
+  const fixedRows = hasValues(transactionSummary.fixedGroups) ? transactionSummary.fixedGroups : paymentGroups;
+  const variableRows = hasValues(transactionSummary.variableGroups) ? transactionSummary.variableGroups : variableGroups;
+  const savingsRows = hasValues(transactionSummary.savingsGroups) ? transactionSummary.savingsGroups : savingsGroups;
 
   const breakdownRows: BreakdownRow[] = [
-    { label: "Rent", value: paymentGroups.rent, ratio: incomeTotal ? (paymentGroups.rent / incomeTotal) * 100 : 0, tone: "fixed" },
-    { label: "Subscriptions", value: paymentGroups.subscriptions, ratio: incomeTotal ? (paymentGroups.subscriptions / incomeTotal) * 100 : 0, tone: "fixed" },
-    { label: "Insurance", value: paymentGroups.insurance, ratio: incomeTotal ? (paymentGroups.insurance / incomeTotal) * 100 : 0, tone: "fixed" },
-    { label: "Utilities", value: paymentGroups.utilities, ratio: incomeTotal ? (paymentGroups.utilities / incomeTotal) * 100 : 0, tone: "fixed" },
-    { label: "Groceries", value: variableGroups.groceries, ratio: incomeTotal ? (variableGroups.groceries / incomeTotal) * 100 : 0, tone: "variable" },
-    { label: "Transport", value: variableGroups.transport, ratio: incomeTotal ? (variableGroups.transport / incomeTotal) * 100 : 0, tone: "variable" },
-    { label: "Personal", value: variableGroups.personal, ratio: incomeTotal ? (variableGroups.personal / incomeTotal) * 100 : 0, tone: "variable" },
-    { label: "ETF (Sparrate)", value: savingsGroups.etf, ratio: incomeTotal ? (savingsGroups.etf / incomeTotal) * 100 : 0, tone: "savings" },
-    { label: "Emergency Fund", value: savingsGroups.emergencyFund, ratio: incomeTotal ? (savingsGroups.emergencyFund / incomeTotal) * 100 : 0, tone: "savings" },
+    ...Object.entries(fixedRows).map(([label, value]) => ({
+      label,
+      value,
+      ratio: incomeTotal ? (value / incomeTotal) * 100 : 0,
+      tone: "fixed" as const,
+    })),
+    ...Object.entries(variableRows).map(([label, value]) => ({
+      label,
+      value,
+      ratio: incomeTotal ? (value / incomeTotal) * 100 : 0,
+      tone: "variable" as const,
+    })),
+    ...Object.entries(savingsRows).map(([label, value]) => ({
+      label,
+      value,
+      ratio: incomeTotal ? (value / incomeTotal) * 100 : 0,
+      tone: "savings" as const,
+    })),
   ].filter((item): item is BreakdownRow => item.value > 0);
 
   const goalRows = buildGoalRows(expected90?.goals ?? [], data.goals);
@@ -219,6 +326,7 @@ export function DashboardOverview({ data, isLoading }: DashboardOverviewProps) {
             breakdownRows={breakdownRows}
             fixedTotal={fixedTotal}
             incomeTotal={incomeTotal}
+            outflowTotal={outflowTotal}
             savingsTotal={savingsTotal}
             variableTotal={variableTotal}
           />
@@ -263,12 +371,14 @@ function CashFlowBreakdownCard({
   breakdownRows,
   fixedTotal,
   incomeTotal,
+  outflowTotal,
   savingsTotal,
   variableTotal,
 }: {
   breakdownRows: BreakdownRow[];
   fixedTotal: number;
   incomeTotal: number;
+  outflowTotal: number;
   savingsTotal: number;
   variableTotal: number;
 }) {
@@ -349,7 +459,7 @@ function CashFlowBreakdownCard({
 
       <div className="fc-card-footnote">
         <span>Values rounded. Percentages of income.</span>
-        <strong>Total Outflow: {formatCompact(incomeTotal)}</strong>
+        <strong>Total Outflow: {formatCompact(outflowTotal)}</strong>
       </div>
     </section>
   );
@@ -454,24 +564,40 @@ function GoalTrackerCard({
       <div className="fc-goal-hero">
         <div className="fc-goal-illustration">💻</div>
         <div className="fc-goal-copy">
-          <p>At your current spend rate and savings plan,</p>
-          <h3>
-            you will reach your {formatCompact(heroGoal.target)} {heroGoal.label} goal
-            <span> in {heroGoal.month}.</span>
-          </h3>
+          {heroGoal.target > 0 ? (
+            <>
+              <p>At your current spend rate and savings plan,</p>
+              <h3>
+                you will reach your {formatCompact(heroGoal.target)} {heroGoal.label} goal
+                <span> in {heroGoal.month}.</span>
+              </h3>
+            </>
+          ) : (
+            <>
+              <p>Your imported transactions are ready.</p>
+              <h3>
+                Create a goal to unlock projected affordability dates
+                <span> from the live forecast.</span>
+              </h3>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="fc-goal-progress-head">
-        <span>{heroGoal.label}</span>
-        <span>
-          {formatCompact(heroGoal.current)} / {formatCompact(heroGoal.target)}
-        </span>
-        <strong>{Math.round(heroGoal.progress)}%</strong>
-      </div>
-      <div className="fc-progress-track fc-progress-track--goal">
-        <div className="fc-progress-fill" style={{ width: `${heroGoal.progress}%` }} />
-      </div>
+      {heroGoal.target > 0 ? (
+        <>
+          <div className="fc-goal-progress-head">
+            <span>{heroGoal.label}</span>
+            <span>
+              {formatCompact(heroGoal.current)} / {formatCompact(heroGoal.target)}
+            </span>
+            <strong>{Math.round(heroGoal.progress)}%</strong>
+          </div>
+          <div className="fc-progress-track fc-progress-track--goal">
+            <div className="fc-progress-fill" style={{ width: `${heroGoal.progress}%` }} />
+          </div>
+        </>
+      ) : null}
 
       <div className="fc-goal-list">
         {rows.length > 0 ? (

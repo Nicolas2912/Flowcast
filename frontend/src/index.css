@@ -66,13 +66,13 @@ select {
 
 .fc-app-shell {
   min-height: 100vh;
-  padding: 16px;
+  padding: 8px 14px 14px;
 }
 
 .fc-browser-frame {
   overflow: hidden;
   border: 1px solid rgba(203, 214, 230, 0.92);
-  border-radius: 28px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.84);
   box-shadow: var(--fc-shadow);
   backdrop-filter: blur(24px);
@@ -83,7 +83,9 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-height: 84px;
   padding: 16px 28px;
+  border-bottom: 1px solid var(--fc-line-soft);
 }
 
 .fc-brand-block,
@@ -110,15 +112,15 @@ select {
 
 .fc-brand-logo,
 .fc-upload-icon {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   color: var(--fc-teal);
 }
 
 .fc-brand-title {
   margin: 0;
   color: #132450;
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   font-weight: 700;
 }
 
@@ -140,7 +142,18 @@ select {
 .fc-brand-subtitle,
 .fc-header-date {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+}
+
+.fc-brand-copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.fc-brand-subtitle {
+  padding-left: 18px;
+  border-left: 1px solid var(--fc-line);
 }
 
 .fc-header-utilities {
@@ -175,8 +188,8 @@ select {
 
 .fc-app-body {
   display: grid;
-  grid-template-columns: 308px minmax(0, 1fr);
-  min-height: calc(100vh - 126px);
+  grid-template-columns: 312px minmax(0, 1fr);
+  min-height: calc(100vh - 108px);
 }
 
 .fc-sidebar {
@@ -209,11 +222,16 @@ select {
   gap: 14px;
 }
 
+.fc-overview-left,
+.fc-overview-right {
+  align-content: start;
+}
+
 .fc-side-card,
 .fc-card,
 .fc-card--placeholder {
   border: 1px solid var(--fc-line);
-  border-radius: 18px;
+  border-radius: 10px;
   background: var(--fc-surface);
   box-shadow: 0 10px 28px rgba(90, 123, 165, 0.08);
 }
@@ -412,13 +430,13 @@ select {
 
 .fc-main-panel {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
   min-width: 0;
-  padding: 18px 22px 22px;
+  padding: 20px 26px 22px;
 }
 
 .fc-top-tabs {
-  display: flex;
+  display: none;
   gap: 28px;
   padding: 8px 4px 16px;
   border-bottom: 1px solid var(--fc-line-soft);
@@ -449,7 +467,7 @@ select {
 
 .fc-main-content {
   min-width: 0;
-  padding-top: 18px;
+  padding-top: 0;
 }
 
 .fc-page-stack {
@@ -471,7 +489,7 @@ select {
 }
 
 .fc-page-title {
-  font-size: 2.1rem;
+  font-size: 1.86rem;
   line-height: 1.05;
   font-weight: 800;
 }
@@ -504,8 +522,8 @@ select {
 
 .fc-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.03fr) minmax(360px, 0.97fr);
+  gap: 26px;
 }
 
 .fc-card-header {
@@ -528,10 +546,10 @@ select {
 
 .fc-sankey-layout {
   display: grid;
-  grid-template-columns: 0.8fr 180px 0.88fr 1.1fr;
+  grid-template-columns: 0.72fr 176px 0.8fr 1.08fr;
   align-items: center;
   gap: 10px;
-  min-height: 270px;
+  min-height: 292px;
   margin-top: 16px;
 }
 
@@ -543,10 +561,18 @@ select {
 }
 
 .fc-sankey-node {
+  display: grid;
+  gap: 2px;
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--fc-line);
   background: white;
+}
+
+.fc-sankey-node strong {
+  color: var(--fc-ink);
+  font-size: 0.94rem;
+  line-height: 1.15;
 }
 
 .fc-sankey-node--source {
@@ -603,7 +629,7 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--fc-line-soft);
   border-radius: 12px;
 }
@@ -670,7 +696,7 @@ select {
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
-  min-height: 190px;
+  min-height: 186px;
   padding-top: 8px;
 }
 
@@ -755,7 +781,7 @@ select {
 
 .fc-goal-hero {
   align-items: center;
-  margin: 16px 0 18px;
+  margin: 18px 0 20px;
 }
 
 .fc-goal-illustration {
@@ -770,7 +796,7 @@ select {
 }
 
 .fc-goal-copy h3 {
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   line-height: 1.5;
 }
 
@@ -818,7 +844,7 @@ select {
 
 .fc-balance-chart {
   width: 100%;
-  height: 184px;
+  height: 190px;
 }
 
 .fc-balance-chart-line {

@@ -54,7 +54,14 @@ function formatCompactCurrency(value: number): string {
   return value % 1 === 0 ? `${Math.round(value).toLocaleString("de-DE")} €` : formatCurrency(value);
 }
 
-function deriveCurrentBalance(accounts: AccountResponse[]): number {
+function deriveCurrentBalance(accounts: AccountResponse[], forecast: ForecastBundleResponse | null): number {
+  const forecastBalance = forecast?.scenarios
+    .find((scenario) => scenario.scenario_id === "expected")
+    ?.horizons.find((horizon) => horizon.days === 90)
+    ?.points[0]?.balance;
+  if (typeof forecastBalance === "number") {
+    return forecastBalance;
+  }
   return accounts.reduce((sum, account) => sum + (account.current_balance_manual ?? account.opening_balance), 0);
 }
 
@@ -90,7 +97,10 @@ export function FlowcastShell({
   snapshot,
 }: FlowcastShellProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const currentBalance = useMemo(() => deriveCurrentBalance(snapshot.accounts), [snapshot.accounts]);
+  const currentBalance = useMemo(
+    () => deriveCurrentBalance(snapshot.accounts, snapshot.forecast),
+    [snapshot.accounts, snapshot.forecast],
+  );
   const monthlyIncome = useMemo(
     () => deriveMonthlyIncome(snapshot.forecast, snapshot.savingsBuckets),
     [snapshot.forecast, snapshot.savingsBuckets],
@@ -216,7 +226,7 @@ export function FlowcastShell({
 
               <MetricSidebarCard
                 accent="green"
-                helper={latestImport ? `+ ${latestImport.inserted_count} rows in latest import` : "Import a CSV to anchor the forecast"}
+                helper={latestImport ? `${latestImport.transaction_count.toLocaleString("de-DE")} rows processed` : "Import a CSV to anchor the forecast"}
                 icon={<WalletIcon />}
                 label="Current Balance"
                 value={formatCurrency(currentBalance)}

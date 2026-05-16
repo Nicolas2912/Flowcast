@@ -104,7 +104,7 @@ export default function App() {
         fetchSavingsBuckets(),
         fetchSavingsSummary().catch(() => null),
         fetchSpendingAssumptions(),
-        fetchTransactions({ page: 1, page_size: 10 }).catch(() => null),
+        fetchTransactions({ page: 1, page_size: 250 }).catch(() => null),
       ]);
 
       setData({
