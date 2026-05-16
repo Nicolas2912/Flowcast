@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 
 import { DashboardOverview } from "./components/dashboard/dashboard-overview";
 import { ForecastScenarioPlanner } from "./components/forecast/forecast-scenario-planner";
+import { GoalsSubscriptionsRulesScreen } from "./components/setup/goals-subscriptions-rules-screen";
 import { FlowcastShell, type AppPage } from "./components/shell/flowcast-shell";
+import { TransactionsCategorizationScreen } from "./components/transactions/transactions-categorization-screen";
 import {
   fetchAccounts,
   fetchCategories,
@@ -182,63 +184,18 @@ export default function App() {
           spendingAssumptions={data.spendingAssumptions}
         />
       ) : null}
-      {activePage !== "overview" && activePage !== "forecast" ? <PlaceholderPage activePage={activePage} /> : null}
+      {activePage === "transactions" ? (
+        <TransactionsCategorizationScreen imports={data.imports} onDataChanged={() => loadAppData("refresh")} />
+      ) : null}
+      {activePage === "setup" ? (
+        <GoalsSubscriptionsRulesScreen
+          categories={data.categories}
+          goals={data.goals}
+          onDataChanged={() => loadAppData("refresh")}
+          plannedPayments={data.plannedPayments}
+          transactions={data.transactions}
+        />
+      ) : null}
     </FlowcastShell>
-  );
-}
-
-function PlaceholderPage({ activePage }: { activePage: Exclude<AppPage, "overview"> }) {
-  const content = {
-    transactions: {
-      eyebrow: "FLO-41 next",
-      title: "Transactions & Categorization",
-      text: "The shared shell is now in place, but this page still needs the dedicated high-density table, pipeline, and review queue from the reference image.",
-      bullets: [
-        "Imported-transactions table with filters, badges, and pagination",
-        "Three-step categorization pipeline with deterministic and LLM stages",
-        "Review queue, category donut, and merchant-rule cards",
-      ],
-    },
-    forecast: {
-      eyebrow: "FLO-40 next",
-      title: "Forecast & Scenario Planner",
-      text: "The navigation target is live, but the scenario controls and projection workspace are still tracked as the separate forecast implementation issue.",
-      bullets: [
-        "365-day projection chart with threshold and subscription markers",
-        "Scenario controls, liquidity alerts, and bottom formula explainer",
-        "Monthly free-cash-flow bars and subscription impact calendar",
-      ],
-    },
-    setup: {
-      eyebrow: "FLO-42 next",
-      title: "Goals, Subscriptions & Rules",
-      text: "This route is reserved inside the shell and now matches the navigation structure from the mockups, but the detailed setup management cards are still a follow-on issue.",
-      bullets: [
-        "Goals table with progress bars and monthly allocation totals",
-        "Subscriptions table with next-charge dates and service icons",
-        "Merchant rules, categories, and database status cards",
-      ],
-    },
-  } as const;
-
-  const page = content[activePage];
-
-  return (
-    <section className="fc-page-stack">
-      <div className="fc-card fc-card--hero">
-        <p className="fc-eyebrow">{page.eyebrow}</p>
-        <h1 className="fc-page-title">{page.title}</h1>
-        <p className="fc-page-copy">{page.text}</p>
-      </div>
-
-      <div className="fc-grid-3">
-        {page.bullets.map((bullet) => (
-          <div key={bullet} className="fc-card fc-card--placeholder">
-            <div className="fc-placeholder-icon" />
-            <p className="fc-placeholder-text">{bullet}</p>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
