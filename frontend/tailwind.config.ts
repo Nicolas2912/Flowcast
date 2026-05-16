@@ -12,7 +12,7 @@ export default {
         leaf: "#15803d",
       },
       fontFamily: {
-        sans: ["Avenir Next", "Helvetica Neue", "sans-serif"],
+        sans: ["Calibri", "Aptos", "Helvetica Neue", "Arial", "sans-serif"],
       },
       boxShadow: {
         float: "0 24px 80px rgba(15, 23, 42, 0.18)",
