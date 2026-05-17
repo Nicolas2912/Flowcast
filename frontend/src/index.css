@@ -198,6 +198,12 @@ button {
   font-weight: 900;
 }
 
+.goal-card-clean .card-heading button {
+  border-radius: 0.55rem;
+  padding: 0.48rem 0.72rem;
+  font-size: 0.82rem;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -247,7 +253,7 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(38rem, 1.18fr) minmax(24rem, 0.82fr);
+  grid-template-columns: minmax(0, 55fr) minmax(0, 50fr);
   gap: 1rem;
   align-items: start;
 }
@@ -278,12 +284,9 @@ button {
 .card-heading h2 {
   margin: 0;
   color: #142457;
-  font-size: clamp(1.05rem, 1.2vw, 1.25rem);
+  font-size: clamp(1.2rem, 1.35vw, 1.45rem);
+  font-weight: 900;
   line-height: 1.2;
-}
-
-.projection-card-clean .card-heading h2 {
-  font-size: clamp(0.95rem, 1vw, 1.1rem);
 }
 
 .card-actions {
@@ -406,45 +409,21 @@ button {
   line-height: 1.5;
 }
 
-.goal-list-clean div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  border-radius: 0.75rem;
-  background: #f3f9fc;
-  padding: 0.85rem;
-}
-
-.goal-list-clean span {
-  color: #142457;
-}
-
-.goal-list-clean strong {
-  color: #079d9b;
-  white-space: nowrap;
-}
-
-.line-chart {
-  position: relative;
-  min-height: 14rem;
-  overflow: hidden;
-}
-
-.line-chart svg {
-  width: 100%;
-  height: 14rem;
-}
-
 .chart-grid {
   fill: none;
   stroke: #edf3f8;
   stroke-width: 1;
 }
 
+.chart-axis {
+  stroke: #d8e3ed;
+  stroke-width: 1.3;
+}
+
 .chart-baseline {
-  stroke: #bde7e2;
+  stroke: #12b8b0;
   stroke-dasharray: 7 8;
-  stroke-width: 2;
+  stroke-width: 1.6;
 }
 
 .chart-line {
@@ -452,23 +431,154 @@ button {
   stroke: #12b8b0;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 5;
+  stroke-width: 2.6;
 }
 
-.line-chart > div {
+.chart-axis-label,
+.chart-x-label {
+  fill: #5f6f98;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-value-label {
+  fill: #142457;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.chart-value-label.risk {
+  fill: #d9364e;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.7rem 1.2rem;
+  color: #5f6f98;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.chart-legend span,
+.line-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.chart-legend i,
+.line-chart-legend i {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.legend-average,
+.legend-balance {
+  width: 1.4rem;
+  height: 0;
+  border-top: 2px dashed #18c3b8;
+}
+
+.legend-expense {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 0.18rem;
+  background: #7fa8ff;
+  box-shadow: 0 0 0 2px rgba(127, 168, 255, 0.14);
+}
+
+.legend-risk {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 0.18rem;
+  background: #ff7e92;
+  box-shadow: 0 0 0 2px rgba(255, 126, 146, 0.14);
+}
+
+.legend-bill {
+  position: relative;
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 1.3px solid #7282aa;
+  border-radius: 0.14rem;
+}
+
+.legend-bill::before {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: min(13rem, 75%);
-  padding: 0.85rem 1rem;
-  background: #eefafa;
+  top: -0.22rem;
+  left: 0.13rem;
+  width: 0.42rem;
+  height: 0.22rem;
+  border-top: 1.3px solid #7282aa;
+  border-left: 1.3px solid #7282aa;
+  border-right: 1.3px solid #7282aa;
+  content: "";
 }
 
-.line-chart strong {
-  display: block;
-  margin-top: 0.25rem;
+.line-chart-legend {
+  display: grid;
+  position: absolute;
+  top: 0.15rem;
+  right: 0.2rem;
+  gap: 0.32rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #5f6f98;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+  pointer-events: none;
+}
+
+.line-chart > .line-chart-legend {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.line-chart-callout rect {
+  fill: #f0fbfa;
+  stroke: #79d4cf;
+  stroke-width: 1.4;
+}
+
+.line-chart-callout path {
+  fill: #f0fbfa;
+  stroke: #79d4cf;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.line-chart-callout text {
   color: #079d9b;
-  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  fill: #079d9b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.line-chart-callout .callout-value {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.bill-marker rect {
+  fill: #f8fbff;
+  stroke: #7282aa;
+  stroke-width: 1.3;
+}
+
+.bill-marker path {
+  fill: none;
+  stroke: #7282aa;
+  stroke-linecap: round;
+  stroke-width: 1;
 }
 
 .health-wrapper {
@@ -592,10 +702,11 @@ button {
 
 .cash-flow-diagram svg {
   display: block;
-  width: min(92%, 46rem);
+  width: 100%;
+  max-width: 64rem;
   height: auto;
   margin: 0.25rem auto 0;
-  aspect-ratio: 760 / 390;
+  aspect-ratio: 700 / 390;
 }
 
 .cash-flow-diagram .flow {
@@ -715,80 +826,145 @@ button {
 }
 
 .liquidity-card {
-  min-height: 16rem;
+  min-height: 20rem;
 }
 
 .bar-chart {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  align-items: end;
-  gap: 0.8rem;
-  min-height: 8rem;
-  padding: 0.7rem 1rem 0.2rem;
-  border-bottom: 1px solid #e5eef5;
+  min-width: 0;
+  margin-top: 0.3rem;
 }
 
-.bar-chart div {
-  display: grid;
-  justify-items: center;
-  gap: 0.35rem;
+.bar-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.bar-chart span {
-  width: min(2rem, 70%);
-  border-radius: 0.25rem 0.25rem 0 0;
-  background: #7ba7f8;
+.bar-expense {
+  fill: #7fa8ff;
+  filter: drop-shadow(0 2px 2px rgba(79, 121, 212, 0.18));
 }
 
-.bar-chart .risk span {
-  background: #ff8496;
+.bar-risk {
+  fill: #ff7e92;
+  filter: drop-shadow(0 2px 2px rgba(221, 58, 82, 0.18));
 }
 
-.bar-chart b {
-  color: #142457;
-  font-size: 0.72rem;
+.chart-average-line {
+  stroke: #3ad8b3;
+  stroke-dasharray: 7 5;
+  stroke-width: 2;
+}
+
+.chart-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin: 0.25rem -1.35rem 0;
+  padding: 0.75rem 1.35rem 0;
+  border-top: 1px solid #e5edf4;
+  color: #5f6f98;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.chart-note span,
+.chart-note a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.chart-note a {
+  color: #4d5d88;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .insight-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin-top: 0.9rem;
+  margin: 0.9rem -1.35rem -1.35rem;
+  border-top: 1px solid #dfe8f0;
+  background: #ffffff;
 }
 
-.insight-strip .metric-card {
-  box-shadow: none;
+.insight-strip > div {
+  min-width: 0;
+  padding: 1.05rem 1.2rem 1rem;
+}
+
+.insight-strip > div + div {
+  border-left: 1px solid #dfe8f0;
+}
+
+.insight-strip span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #142457;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.insight-strip strong {
+  display: block;
+  margin-top: 0.75rem;
+  color: #142457;
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1;
+}
+
+.insight-strip small {
+  color: #5f6f98;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.insight-strip p {
+  margin: 0.7rem 0 0;
+  color: #5f6f98;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.insight-strip > div:first-child p {
+  color: #20bfa8;
 }
 
 .goal-feature {
   display: grid;
-  grid-template-columns: 5.2rem minmax(0, 1fr);
-  gap: 1.2rem;
+  grid-template-columns: clamp(4.6rem, 8vw, 5.8rem) minmax(0, 1fr);
+  gap: clamp(1rem, 2vw, 1.45rem);
   align-items: center;
-  min-height: 6.7rem;
+  min-height: 7.5rem;
+  margin-top: 0.2rem;
 }
 
 .goal-icon {
   display: grid;
-  width: 4.4rem;
-  height: 4.4rem;
+  width: clamp(4.4rem, 7vw, 5.4rem);
+  height: clamp(4.4rem, 7vw, 5.4rem);
   place-items: center;
   border-radius: 50%;
   background: #dff8ef;
-  font-size: 1.75rem;
+  font-size: clamp(1.8rem, 3vw, 2.25rem);
 }
 
 .goal-feature p {
   margin: 0;
   color: #5f6f98;
+  font-size: clamp(0.82rem, 0.95vw, 0.9rem);
+  line-height: 1.35;
 }
 
 .goal-feature strong {
   display: block;
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
   color: #142457;
-  font-size: 1.42rem;
-  line-height: 1.12;
+  font-size: clamp(0.95rem, 1.3vw, 1.18rem);
+  line-height: 1.14;
 }
 
 .goal-feature span {
@@ -798,39 +974,238 @@ button {
 .goal-progress {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 0.9rem;
+  gap: 0.9rem 1.25rem;
   align-items: center;
-  margin-top: 0.75rem;
+  margin-top: 0.85rem;
   color: #142457;
+  font-size: clamp(0.82rem, 0.9vw, 0.92rem);
+  font-weight: 800;
+}
+
+.goal-progress strong,
+.goal-progress b {
+  white-space: nowrap;
 }
 
 .goal-progress i {
   grid-column: 1 / -1;
   height: 0.38rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, #079d9b 0 70%, #e0e8ef 70% 100%);
+  background: linear-gradient(90deg, #079d9b 0 var(--goal-progress, 70%), #e0e8ef var(--goal-progress, 70%) 100%);
+}
+
+.goal-list-clean {
+  overflow: hidden;
+  margin-top: 1.05rem;
+  border: 1px solid #dce8f1;
+  border-radius: 0.55rem;
+  background: #ffffff;
+}
+
+.goal-list-clean div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1.1fr) minmax(8.8rem, 1.15fr) 3.3rem minmax(4.1rem, 0.72fr) 0.8rem;
+  gap: 0.65rem;
+  align-items: center;
+  min-height: 2.7rem;
+  padding: 0.55rem 0.65rem;
+  color: #5f6f98;
+}
+
+.goal-list-clean div + div {
+  border-top: 1px solid #e5edf4;
+}
+
+.goal-list-clean span {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  color: #142457;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.goal-list-clean em {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 0.45rem;
+  background: #edf8f8;
+  font-style: normal;
+  font-size: 1rem;
+}
+
+.goal-list-clean strong,
+.goal-list-clean b,
+.goal-list-clean time {
+  color: #5f6f98;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.goal-list-clean b,
+.goal-list-clean time {
+  text-align: center;
+}
+
+.goal-list-clean i {
+  color: #142457;
+  font-size: 1.2rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+.projection-card-clean .card-heading {
+  align-items: center;
+}
+
+.projection-card-clean .card-actions {
+  flex: 0 0 auto;
+  gap: 0.55rem;
+}
+
+.projection-card-clean .card-actions button {
+  border: 0;
+  background: transparent;
+  color: #4d5d88;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.projection-card-clean .card-actions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border: 1px solid #d6e5ef;
+  border-radius: 0.35rem;
+  padding: 0.28rem 0.52rem;
+  color: #142457;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.projection-card-clean .card-actions span b {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 1.6px solid #142457;
+  border-bottom: 1.6px solid #142457;
+  transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.line-chart {
+  position: relative;
+  display: block;
+  min-height: 15rem;
+  overflow: hidden;
+}
+
+.line-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 13.2rem;
+  min-width: 0;
 }
 
 .free-cash-card .cash-equation {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 0.8rem;
+  grid-template-columns: minmax(4.5rem, 1fr) auto minmax(4.5rem, 1fr) auto minmax(5.8rem, 1.25fr) auto minmax(4.8rem, 1fr);
+  gap: 0.65rem;
   align-items: center;
+  margin-top: 0.7rem;
 }
 
 .cash-equation > b {
   color: #142457;
-  font-size: 1.35rem;
-}
-
-.cash-equation .metric-card {
-  box-shadow: none;
+  font-size: 1.15rem;
   text-align: center;
 }
 
-.cash-equation .metric-card:last-child {
-  border-color: #1bbdb5;
+.cash-equation-card {
+  display: grid;
+  align-content: center;
+  min-height: 4.45rem;
+  padding: 0.6rem 0.55rem;
+  border: 1px solid #dce8f1;
+  border-radius: 0.45rem;
+  background: #ffffff;
+  text-align: center;
+}
+
+.cash-equation-card span {
+  color: #5f6f98;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.cash-equation-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #142457;
+  font-size: clamp(1.05rem, 1.45vw, 1.35rem);
+  line-height: 1;
+}
+
+.cash-equation-card small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #079d9b;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.cash-equation-card.income {
+  border-color: #bfe7dc;
   background: #ecfbf8;
+}
+
+.cash-equation-card.income span,
+.cash-equation-card.income small,
+.cash-equation-card.adjusted span,
+.cash-equation-card.adjusted small {
+  color: #079d9b;
+}
+
+.cash-equation-card.subscriptions {
+  border-color: #d5e1f7;
+  background: #f8fbff;
+}
+
+.cash-equation-card.subscriptions span {
+  color: #5977c7;
+}
+
+.cash-equation-card.burn {
+  border-color: #f4dfc6;
+  background: #fffaf4;
+}
+
+.cash-equation-card.burn span,
+.cash-equation-card.burn small {
+  color: #c57218;
+}
+
+.cash-equation-card.adjusted {
+  border-color: #20bfb6;
+  border-width: 1.5px;
+  background: #ecfbf8;
+}
+
+.cash-equation-note {
+  margin: 0.6rem 0 0;
+  color: #5f6f98;
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 @media (max-width: 1500px) {
@@ -839,7 +1214,7 @@ button {
   }
 
   .dashboard-mode .dashboard-grid {
-    grid-template-columns: minmax(35.5rem, 1fr) minmax(21.5rem, 0.7fr);
+    grid-template-columns: minmax(0, 55fr) minmax(0, 50fr);
     gap: 0.9rem;
   }
 
@@ -855,7 +1230,8 @@ button {
 }
 
 @media (max-width: 1100px) {
-  .app-frame {
+  .app-frame,
+  .dashboard-mode .app-frame {
     grid-template-columns: 1fr;
   }
 
@@ -880,6 +1256,11 @@ button {
 
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid,
+  .dashboard-mode .dashboard-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -909,5 +1290,28 @@ button {
   .line-chart > div {
     position: static;
     width: 100%;
+  }
+
+  .goal-feature,
+  .goal-progress,
+  .goal-list-clean div {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-feature {
+    justify-items: start;
+  }
+
+  .goal-progress {
+    gap: 0.45rem;
+  }
+
+  .goal-progress i {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .goal-list-clean div {
+    gap: 0.35rem;
   }
 }

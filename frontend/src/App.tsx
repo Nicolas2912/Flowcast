@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { ChartCandlestick } from "lucide-react";
 
 import { ForecastWorkspace } from "./components/forecast/forecast-workspace";
 import { HealthCard } from "./components/health-card";
@@ -50,8 +51,76 @@ const fallbackCategories = [
   { label: "Nebenkosten", value: 121.13, share: 3, tone: "bucket-fixed" },
 ];
 
+const fallbackGoalRows = [
+  { icon: "💻", name: "Laptop", progress: 70, saved: "1,050 €", target: "1,500 €", targetDate: "Aug 2026" },
+  { icon: "✈️", name: "Canada Trip", progress: 40, saved: "1,200 €", target: "3,000 €", targetDate: "Jun 2027" },
+  { icon: "🛡️", name: "Emergency Fund", progress: 62, saved: "6,200 €", target: "10,000 €", targetDate: "Mar 2026" },
+];
+
+const weeklyOutflows = [620, 870, 1680, 640, 720, 1550, 610, 840, 670, 930];
+const balanceSeries = [8600, 8500, 8300, 8000, 7600, 7200, 8400, 8350, 8300, 8200, 7800, 7600, 7800, 7700, 7400, 6900, 8150, 8000, 7900, 7600, 7200, 7000, 6900, 6500, 6250, 6000, 7600, 7350, 7100, 6800, 6350, 6100, 6200, 5900, 5650, 5420];
+const billMarkerIndexes = [5, 16, 22, 26];
+
 function expectedHorizon(forecast: ForecastBundleResponse | null) {
   return forecast?.scenarios.find((scenario) => scenario.scenario_id === "expected")?.horizons.find((horizon) => horizon.days === 90) ?? null;
+}
+
+function compactCurrency(value: number) {
+  return currency.format(value).replace(",00", "");
+}
+
+function compactEuro(value: number) {
+  return `${new Intl.NumberFormat("de-DE").format(value)} €`;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function shortDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(date);
+}
+
+function dateRangeLabel(start: Date, end: Date) {
+  const startLabel = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(start);
+  const sameMonth = start.getMonth() === end.getMonth();
+  const endLabel = new Intl.DateTimeFormat("en-US", sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" }).format(end);
+
+  return `${startLabel}-${endLabel}`;
+}
+
+function goalIcon(goal: GoalResponse) {
+  const name = goal.name.toLowerCase();
+  if (name.includes("trip") || name.includes("travel") || name.includes("canada") || goal.goal_type === "travel") {
+    return "✈️";
+  }
+  if (name.includes("emergency") || name.includes("notgroschen") || goal.goal_type === "emergency") {
+    return "🛡️";
+  }
+  return "💻";
+}
+
+function goalTargetDateLabel(targetDate: string | null) {
+  if (!targetDate) {
+    return "No date";
+  }
+
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(targetDate));
+}
+
+function goalToOverviewRow(goal: GoalResponse) {
+  const progress = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_saved_amount / goal.target_amount) * 100)) : 0;
+
+  return {
+    icon: goalIcon(goal),
+    name: goal.name,
+    progress,
+    saved: compactCurrency(goal.current_saved_amount),
+    target: compactCurrency(goal.target_amount),
+    targetDate: goalTargetDateLabel(goal.target_date),
+  };
 }
 
 function toErrorMessage(caughtError: unknown): string {
@@ -190,6 +259,8 @@ function DashboardOverview({
   const projectedBalance = horizon?.risk.ending_balance ?? 0;
   const lowestBalance = horizon?.risk.minimum_balance ?? 0;
   const activeGoals = goals.filter((goal) => goal.is_active);
+  const goalRows = activeGoals.length > 0 ? activeGoals.slice(0, 3).map(goalToOverviewRow) : fallbackGoalRows;
+  const featuredGoal = goalRows[0];
   const categories = useMemo(() => {
     if (assumptions.length === 0) {
       return fallbackCategories;
@@ -209,7 +280,6 @@ function DashboardOverview({
         <div>
           <h1>Dashboard Overview</h1>
         </div>
-        <button type="button" onClick={onRetryHealth}>Refresh</button>
       </div>
 
       <section className="summary-grid dashboard-mobile-summary" aria-label="Forecast summary">
@@ -236,20 +306,33 @@ function DashboardOverview({
           <article className="overview-card liquidity-card">
             <div className="card-heading">
               <h2>Liquidity Threat Calendar</h2>
-              <span>Next 10 weeks</span>
+              <div className="chart-legend" aria-hidden="true">
+                <span><i className="legend-average" />Avg Weekly Outflow</span>
+                <span><i className="legend-expense" />Upcoming Expense</span>
+                <span><i className="legend-risk" />High Risk Week</span>
+              </div>
             </div>
-            <div className="bar-chart" aria-hidden="true">
-              {[620, 870, 1680, 640, 720, 1550, 610, 840, 670, 930].map((amount, index) => (
-                <div className={amount > 1200 ? "risk" : ""} key={`${amount}-${index}`}>
-                  <span style={{ height: `${Math.max(28, amount / 18)}px` }} />
-                  <b>{currency.format(amount).replace(",00", "")}</b>
-                </div>
-              ))}
+            <LiquidityThreatChart />
+            <div className="chart-note">
+              <span><i aria-hidden="true">ⓘ</i> Spikes include known bills & subscriptions.</span>
+              <a href="#planning">View full calendar <b aria-hidden="true">→</b></a>
             </div>
             <div className="insight-strip">
-              <MetricCard label="90d Variable Burn Rate" value="1.120 € / month" />
-              <MetricCard label="Monthly Fixed Spend" value="1.450 €" />
-              <MetricCard label="Categorized Transactions" value={importedRows > 0 ? String(importedRows) : "278"} />
+              <div>
+                <span>90d Variable Burn Rate <i aria-hidden="true">ⓘ</i></span>
+                <strong>1,120 € <small>/ month</small></strong>
+                <p>↓ ±120 € vs prior 90 days</p>
+              </div>
+              <div>
+                <span>Monthly Fixed Spend <i aria-hidden="true">ⓘ</i></span>
+                <strong>1,450 €</strong>
+                <p>42% of income</p>
+              </div>
+              <div>
+                <span>Categorized Transactions <i aria-hidden="true">ⓘ</i></span>
+                <strong>{importedRows > 0 ? String(importedRows) : "278"}</strong>
+                <p>In the last 90 days</p>
+              </div>
             </div>
           </article>
         </div>
@@ -261,64 +344,73 @@ function DashboardOverview({
               <h2>Goal Tracker</h2>
               <button type="button">+ Add Goal</button>
             </div>
-            {activeGoals.length > 0 ? (
-              <div className="goal-list-clean">
-                {activeGoals.slice(0, 4).map((goal) => (
-                  <div key={goal.id}>
-                    <span>{goal.name}</span>
-                    <strong>{currency.format(goal.target_amount)}</strong>
-                  </div>
-                ))}
+            <div className="goal-feature">
+              <div className="goal-icon" aria-hidden="true">{featuredGoal.icon}</div>
+              <div>
+                <p>At your current spend rate and a 500 € ETF Sparrate,</p>
+                <strong>you will reach your {featuredGoal.target} {featuredGoal.name} goal <span>in {featuredGoal.targetDate}.</span></strong>
               </div>
-            ) : (
-              <div className="goal-feature">
-                <div className="goal-icon" aria-hidden="true">💻</div>
-                <div>
-                  <p>At your current spend rate and a 500 € ETF Sparrate,</p>
-                  <strong>you will reach your 1,500 € Laptop goal <span>in August 2026.</span></strong>
-                </div>
-              </div>
-            )}
+            </div>
             <div className="goal-progress">
-              <span>Laptop</span>
-              <strong>1,050 € / 1,500 €</strong>
-              <b>70%</b>
-              <i />
+              <span>{featuredGoal.name}</span>
+              <strong>{featuredGoal.saved} / {featuredGoal.target}</strong>
+              <b>{featuredGoal.progress}%</b>
+              <i style={{ "--goal-progress": `${featuredGoal.progress}%` } as CSSProperties} />
+            </div>
+            <div className="goal-list-clean" aria-label="Goal progress list">
+              {goalRows.map((goal) => (
+                <div key={`${goal.name}-${goal.targetDate}`}>
+                  <span><em aria-hidden="true">{goal.icon}</em>{goal.name}</span>
+                  <strong>{goal.saved} / {goal.target}</strong>
+                  <b>{goal.progress}%</b>
+                  <time>{goal.targetDate}</time>
+                  <i aria-hidden="true">›</i>
+                </div>
+              ))}
             </div>
           </article>
 
           <article className="overview-card projection-card-clean">
             <div className="card-heading">
               <h2>Projected Balance — Next 90 Days</h2>
-              <span>90 Days</span>
-            </div>
-            <div className="line-chart" aria-hidden="true">
-              <svg viewBox="0 0 640 250">
-                <path d="M30 44 H610M30 92 H610M30 140 H610M30 188 H610" className="chart-grid" />
-                <path d="M30 94 L82 102 L128 118 L134 82 L188 84 L220 104 L250 96 L286 113 L292 78 L348 83 L394 104 L430 119 L438 74 L500 98 L548 123 L592 132" className="chart-line" />
-                <path d="M30 150 H610" className="chart-baseline" />
-              </svg>
-              <div>
-                <span>Projected Balance</span>
-                <strong>{projectedBalance ? currency.format(projectedBalance) : currency.format(5420)}</strong>
+              <div className="card-actions">
+                <button type="button">Show details</button>
+                <span>90 Days <b aria-hidden="true" /></span>
               </div>
             </div>
+            <ProjectedBalanceChart projectedBalance={projectedBalance || 5420} />
           </article>
 
           <article className="overview-card free-cash-card">
             <div className="card-heading">
-              <h2>True Free Cash Flow</h2>
-              <span>Adjusted</span>
+              <h2>True Free Cash Flow <span aria-hidden="true">ⓘ</span></h2>
             </div>
             <div className="cash-equation">
-              <MetricCard label="Net Income" value="3.450 €" />
+              <div className="cash-equation-card income">
+                <span>Net Income</span>
+                <strong>3,450 €</strong>
+                <small>/month</small>
+              </div>
               <b>−</b>
-              <MetricCard label="Subscriptions" value="200 €" />
+              <div className="cash-equation-card subscriptions">
+                <span>Subscriptions</span>
+                <strong>200 €</strong>
+                <small>/month</small>
+              </div>
               <b>−</b>
-              <MetricCard label="90d Variable Burn Rate" value="1.120 €" />
+              <div className="cash-equation-card burn">
+                <span>90d Variable Burn Rate</span>
+                <strong>1,120 €</strong>
+                <small>/month</small>
+              </div>
               <b>=</b>
-              <MetricCard label="Adjusted FCF" value="2.130 €" />
+              <div className="cash-equation-card adjusted">
+                <span>Adjusted FCF</span>
+                <strong>2,130 €</strong>
+                <small>/month</small>
+              </div>
             </div>
+            <p className="cash-equation-note">What you can safely allocate toward goals and investing.</p>
           </article>
         </div>
       </section>
@@ -371,6 +463,114 @@ function RailStat({ label, note, value }: { label: string; note: string; value: 
   );
 }
 
+function LiquidityThreatChart() {
+  const today = new Date();
+  const firstWeekStart = addDays(today, 2);
+  const maxAmount = 2000;
+  const chart = { left: 58, right: 20, top: 20, bottom: 48, width: 820, height: 280 };
+  const plotWidth = chart.width - chart.left - chart.right;
+  const plotHeight = chart.height - chart.top - chart.bottom;
+  const barWidth = 27;
+  const averageOutflow = 790;
+  const averageY = chart.top + plotHeight - (averageOutflow / maxAmount) * plotHeight;
+  const ticks = [0, 500, 1000, 1500, 2000];
+
+  return (
+    <div className="bar-chart" aria-label="Liquidity threat calendar for the next 10 weeks">
+      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img">
+        {ticks.map((tick) => {
+          const y = chart.top + plotHeight - (tick / maxAmount) * plotHeight;
+          return (
+            <g key={tick}>
+              <line className="chart-grid" x1={chart.left} x2={chart.width - chart.right} y1={y} y2={y} />
+              <text className="chart-axis-label" x={chart.left - 10} y={y + 4} textAnchor="end">{compactEuro(tick)}</text>
+            </g>
+          );
+        })}
+        <line className="chart-axis" x1={chart.left} x2={chart.width - chart.right} y1={chart.top + plotHeight} y2={chart.top + plotHeight} />
+        <line className="chart-axis" x1={chart.left} x2={chart.left} y1={chart.top} y2={chart.top + plotHeight} />
+        <line className="chart-average-line" x1={chart.left} x2={chart.width - chart.right} y1={averageY} y2={averageY} />
+        {weeklyOutflows.map((amount, index) => {
+          const slot = plotWidth / weeklyOutflows.length;
+          const x = chart.left + slot * index + slot / 2;
+          const height = (amount / maxAmount) * plotHeight;
+          const y = chart.top + plotHeight - height;
+          const start = addDays(firstWeekStart, index * 7);
+          const end = addDays(start, 6);
+          const isRisk = amount > 1200;
+
+          return (
+            <g key={`${amount}-${index}`}>
+              <text className={isRisk ? "chart-value-label risk" : "chart-value-label"} x={x} y={y - 10} textAnchor="middle">{compactEuro(amount)}</text>
+              <rect className={isRisk ? "bar-risk" : "bar-expense"} x={x - barWidth / 2} y={y} width={barWidth} height={height} rx="3" />
+              <text className="chart-x-label" x={x} y={chart.height - 14} textAnchor="middle">{dateRangeLabel(start, end)}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function ProjectedBalanceChart({ projectedBalance }: { projectedBalance: number }) {
+  const today = new Date();
+  const startDate = addDays(today, 1);
+  const chart = { left: 58, right: 122, top: 44, bottom: 44, width: 640, height: 278 };
+  const plotWidth = chart.width - chart.left - chart.right;
+  const plotHeight = chart.height - chart.top - chart.bottom;
+  const minBalance = 0;
+  const maxBalance = 10000;
+  const currentBalance = 5420;
+  const yFor = (value: number) => chart.top + plotHeight - ((value - minBalance) / (maxBalance - minBalance)) * plotHeight;
+  const xFor = (index: number) => chart.left + (index / (balanceSeries.length - 1)) * plotWidth;
+  const linePath = balanceSeries.map((value, index) => `${index === 0 ? "M" : "L"}${xFor(index).toFixed(1)} ${yFor(value).toFixed(1)}`).join(" ");
+  const projectionTicks = [0, 2000, 4000, 6000, 8000, 10000];
+  const dateTicks = [0, 7, 14, 21, 28, 35, 42, 49, 56, 77, 84];
+  const finalY = yFor(projectedBalance);
+
+  return (
+    <div className="line-chart" aria-label="Projected balance for the next 90 days">
+      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img">
+        {projectionTicks.map((tick) => {
+          const y = yFor(tick);
+          return (
+            <g key={tick}>
+              <line className="chart-grid" x1={chart.left} x2={chart.width - chart.right} y1={y} y2={y} />
+              <text className="chart-axis-label" x={chart.left - 10} y={y + 4} textAnchor="end">{compactEuro(tick)}</text>
+            </g>
+          );
+        })}
+        <line className="chart-axis" x1={chart.left} x2={chart.width - chart.right} y1={chart.top + plotHeight} y2={chart.top + plotHeight} />
+        <line className="chart-axis" x1={chart.left} x2={chart.left} y1={chart.top} y2={chart.top + plotHeight} />
+        <line className="chart-baseline" x1={chart.left} x2={chart.width - chart.right} y1={yFor(currentBalance)} y2={yFor(currentBalance)} />
+        <path d={linePath} className="chart-line" />
+        {billMarkerIndexes.map((index) => (
+          <g className="bill-marker" key={index} transform={`translate(${xFor(index)} ${yFor(balanceSeries[index]) + 14})`}>
+            <rect x="-7" y="-9" width="14" height="16" rx="2" />
+            <path d="M-3 -4 H3M-3 0 H3M-3 4 H2" />
+          </g>
+        ))}
+        {dateTicks.map((offset) => (
+          <text className="chart-x-label" key={offset} x={chart.left + (offset / 90) * plotWidth} y={chart.height - 14} textAnchor="middle">
+            {shortDate(addDays(startDate, offset))}
+          </text>
+        ))}
+        <g className="line-chart-callout" transform={`translate(${chart.width - 112} ${Math.max(36, finalY - 29)})`}>
+          <path d="M0 20 L-10 29 L0 38 Z" />
+          <rect width="96" height="58" rx="4" />
+          <text x="9" y="17">Projected Balance</text>
+          <text x="9" y="38" className="callout-value">{compactEuro(projectedBalance)}</text>
+          <text x="9" y="52">in 90 days</text>
+        </g>
+      </svg>
+      <div className="line-chart-legend">
+        <span><i className="legend-bill" />Subscription / Bill</span>
+        <span><i className="legend-balance" />Current Balance</span>
+      </div>
+    </div>
+  );
+}
+
 function CashFlowDiagram({ categories }: { categories: Array<{ label: string; value: number; share: number; tone: string }> }) {
   const categoryRows = categories
     .slice(0, 5)
@@ -378,7 +578,7 @@ function CashFlowDiagram({ categories }: { categories: Array<{ label: string; va
 
   return (
     <div className="cash-flow-diagram" aria-label="Cash flow breakdown diagram">
-      <svg viewBox="0 0 760 390" role="img">
+      <svg viewBox="0 0 700 390" role="img">
         <defs>
           <linearGradient id="fixedFlow" x1="0" x2="1">
             <stop stopColor="#dbe7ff" />
@@ -393,12 +593,12 @@ function CashFlowDiagram({ categories }: { categories: Array<{ label: string; va
             <stop offset="1" stopColor="#f4c65a" />
           </linearGradient>
         </defs>
-        <path className="flow fixed" d="M126 194 C218 194 196 74 298 74" />
-        <path className="flow variable" d="M126 194 C218 194 196 194 298 194" />
-        <path className="flow savings" d="M126 194 C218 194 196 314 298 314" />
-        <path className="flow fixed terminal" d="M306 74 H314" />
-        <path className="flow variable terminal" d="M306 194 H314" />
-        <path className="flow savings terminal" d="M306 314 H314" />
+        <path className="flow fixed" d="M104 194 C190 194 172 74 276 74" />
+        <path className="flow variable" d="M104 194 C190 194 172 194 276 194" />
+        <path className="flow savings" d="M104 194 C190 194 172 314 276 314" />
+        <path className="flow fixed terminal" d="M284 74 H292" />
+        <path className="flow variable terminal" d="M284 194 H292" />
+        <path className="flow savings terminal" d="M284 314 H292" />
 
         {categoryRows.map((category, index) => {
           const targetY = 36 + index * 43 + 15.5;
@@ -407,47 +607,47 @@ function CashFlowDiagram({ categories }: { categories: Array<{ label: string; va
 
           return (
             <g key={`${category.label}-flow`}>
-              <path className={`flow ${flowTone} thin`} d={`M426 ${sourceY} C492 ${sourceY} 476 ${targetY} 540 ${targetY}`} />
-              <path className={`flow ${flowTone} thin terminal`} d={`M544 ${targetY} H550`} />
+              <path className={`flow ${flowTone} thin`} d={`M404 ${sourceY} C460 ${sourceY} 452 ${targetY} 512 ${targetY}`} />
+              <path className={`flow ${flowTone} thin terminal`} d={`M516 ${targetY} H522`} />
             </g>
           );
         })}
 
-        <rect className="svg-node income" x="28" y="158" width="102" height="72" rx="5" />
-        <text className="svg-label" x="78" y="184" textAnchor="middle">Income</text>
-        <text className="svg-value" x="78" y="207" textAnchor="middle">3,450 €</text>
+        <rect className="svg-node income" x="2" y="158" width="102" height="72" rx="5" />
+        <text className="svg-label" x="53" y="184" textAnchor="middle">Income</text>
+        <text className="svg-value" x="53" y="207" textAnchor="middle">3,450 €</text>
 
         <g className="svg-bucket fixed">
-          <rect x="314" y="36" width="112" height="76" rx="5" />
-          <text className="svg-label" x="370" y="63" textAnchor="middle">Fixed</text>
-          <text className="svg-value" x="370" y="84" textAnchor="middle">1,450 €</text>
-          <text className="svg-sub" x="370" y="103" textAnchor="middle">(42%)</text>
+          <rect x="292" y="36" width="112" height="76" rx="5" />
+          <text className="svg-label" x="348" y="63" textAnchor="middle">Fixed</text>
+          <text className="svg-value" x="348" y="84" textAnchor="middle">1,450 €</text>
+          <text className="svg-sub" x="348" y="103" textAnchor="middle">(42%)</text>
         </g>
         <g className="svg-bucket variable">
-          <rect x="314" y="156" width="112" height="76" rx="5" />
-          <text className="svg-label" x="370" y="183" textAnchor="middle">Variable</text>
-          <text className="svg-value" x="370" y="204" textAnchor="middle">1,100 €</text>
-          <text className="svg-sub" x="370" y="223" textAnchor="middle">(32%)</text>
+          <rect x="292" y="156" width="112" height="76" rx="5" />
+          <text className="svg-label" x="348" y="183" textAnchor="middle">Variable</text>
+          <text className="svg-value" x="348" y="204" textAnchor="middle">1,100 €</text>
+          <text className="svg-sub" x="348" y="223" textAnchor="middle">(32%)</text>
         </g>
         <g className="svg-bucket savings">
-          <rect x="314" y="276" width="112" height="76" rx="5" />
-          <text className="svg-label" x="370" y="303" textAnchor="middle">Savings</text>
-          <text className="svg-value" x="370" y="324" textAnchor="middle">900 €</text>
-          <text className="svg-sub" x="370" y="343" textAnchor="middle">(26%)</text>
+          <rect x="292" y="276" width="112" height="76" rx="5" />
+          <text className="svg-label" x="348" y="303" textAnchor="middle">Savings</text>
+          <text className="svg-value" x="348" y="324" textAnchor="middle">900 €</text>
+          <text className="svg-sub" x="348" y="343" textAnchor="middle">(26%)</text>
         </g>
 
         {categoryRows.map((category, index) => {
           const y = 36 + index * 43;
           return (
             <g className={`svg-category ${category.tone}`} key={category.label}>
-              <rect x="550" y={y} width="188" height="31" rx="4" />
-              <text className="svg-category-label" x="564" y={y + 20}>{category.label}</text>
-              <text className="svg-category-share" x="678" y={y + 20} textAnchor="end">{category.share}%</text>
-              <text className="svg-category-value" x="728" y={y + 20} textAnchor="end">{currency.format(category.value)}</text>
+              <rect x="522" y={y} width="172" height="31" rx="4" />
+              <text className="svg-category-label" x="534" y={y + 20}>{category.label}</text>
+              <text className="svg-category-share" x="632" y={y + 20} textAnchor="end">{category.share}%</text>
+              <text className="svg-category-value" x="684" y={y + 20} textAnchor="end">{currency.format(category.value)}</text>
             </g>
           );
         })}
-        <text className="svg-footnote" x="28" y="374">Values rounded. Percentages of income.</text>
+        <text className="svg-footnote" x="2" y="374">Values rounded. Percentages of income.</text>
       </svg>
     </div>
   );
@@ -487,10 +687,5 @@ function BucketCard({ label, share, tone, value }: { label: string; share: numbe
 }
 
 function LogoMark() {
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden="true">
-      <path d="M5 31h30M9 27V16l7-5v16M20 27V12l7-6v21M31 27V9" />
-      <path d="M7 17l9-7 7 4 10-10" />
-    </svg>
-  );
+  return <ChartCandlestick aria-hidden="true" strokeWidth={1} />;
 }
